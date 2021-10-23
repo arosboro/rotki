@@ -32,6 +32,7 @@ Contents
    usage_guide
    api
    websockets
+   rotkehlchen/modules
    contribute
    faq
    changelog
