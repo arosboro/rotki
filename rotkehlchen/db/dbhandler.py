@@ -57,6 +57,7 @@ from rotkehlchen.constants.timing import HOUR_IN_SECONDS
 from rotkehlchen.db.eth2 import ETH2_DEPOSITS_PREFIX
 from rotkehlchen.db.loopring import DBLoopring
 from rotkehlchen.db.schema import DB_SCRIPT_CREATE_TABLES
+from rotkehlchen.db.schema import DB_SCRIPT_CREATE_TRANSIENT_TABLES
 from rotkehlchen.db.settings import (
     DEFAULT_PREMIUM_SHOULD_SYNC,
     ROTKEHLCHEN_DB_VERSION,
@@ -321,6 +322,10 @@ class DBHandler:
         DBUpgradeManager(self).run_upgrades()
         # create tables if needed (first run - or some new tables)
         self.conn.executescript(DB_SCRIPT_CREATE_TABLES)
+        # set up transient connection
+        self.connect_transient(password)
+        # creating tables if necessary
+        self.conn_transient.executescript(DB_SCRIPT_CREATE_TRANSIENT_TABLES)
 
     def get_md5hash(self) -> str:
         """Get the md5hash of the DB
@@ -423,6 +428,29 @@ class DBHandler:
         self.conn.executescript(script)
         self.conn.execute('PRAGMA foreign_keys=ON')
 
+    def connect_transient(self, password: str) -> None:
+        """Connect to the transient DB using password
+
+        May raise:
+        - SystemPermissionError if we are unable to open the DB file,
+        probably due to permission errors
+        """
+        fullpath = self.user_data_dir / 'rotkehlchen_transient.db'
+        try:
+            self.conn_transient = sqlcipher.connect(str(fullpath))  # pylint: disable=no-member
+        except sqlcipher.OperationalError as e:  # pylint: disable=no-member
+            raise SystemPermissionError(
+                f'Could not open database file: {fullpath}. Permission errors?',
+            ) from e
+
+        self.conn_transient.text_factory = str
+        password_for_sqlcipher = _protect_password_sqlcipher(password)
+        script = f'PRAGMA key="{password_for_sqlcipher}";'
+        if self.sqlcipher_version == 3:
+            script += f'PRAGMA kdf_iter={KDF_ITER};'
+        self.conn_transient.executescript(script)
+        self.conn_transient.execute('PRAGMA foreign_keys=ON')
+
     def change_password(self, new_password: str) -> bool:
         """Changes the password for the currently logged in user
         """
@@ -462,6 +490,11 @@ class DBHandler:
         if hasattr(self, 'conn') and self.conn:
             self.conn.close()
             self.conn = None
+
+    def disconnect_transient(self) -> None:
+        if hasattr(self, 'conn_transient') and self.conn_transient:
+            self.conn_transient.close()
+            self.conn_transient = None
 
     def export_unencrypted(self, temppath: Path) -> None:
         self.conn.executescript(
