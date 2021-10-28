@@ -697,35 +697,3 @@ BEGIN TRANSACTION;
 COMMIT;
 PRAGMA foreign_keys=on;
 """
-
-"""Begin Database Schema for Transient Database"""
-
-DB_CREATE_PNL_REPORT = """
-CREATE TABLE IF NOT EXISTS pnl_reports (
-    identifier TEXT NOT NULL PRIMARY KEY,
-    name TEXT,
-    created INTEGER,
-    period_start INTEGER,
-    period_end INTEGER,
-    size_on_disk INTEGER
-);
-"""
-
-DB_CREATE_PNL_EVENTS = """
-CREATE TABLE IF NOT EXISTS pnl_events (
-    identifier TEXT NOT NULL PRIMARY KEY,
-    report_id TEXT NOT NULL,
-    timestamp INTEGER NOT NULL,
-    data BLOB NOT NULL,
-    FOREIGN KEY (report_id) REFERENCES pnl_reports(identifier) ON DELETE CASCADE
-);
-"""
-
-DB_SCRIPT_CREATE_TRANSIENT_TABLES = f"""
-PRAGMA foreign_keys=off;
-BEGIN TRANSACTION;
-{DB_CREATE_PNL_REPORT}
-{DB_CREATE_PNL_EVENTS}
-COMMIT;
-PRAGMA foreign_keys=on;
-"""

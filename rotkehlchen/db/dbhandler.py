@@ -57,7 +57,7 @@ from rotkehlchen.constants.timing import HOUR_IN_SECONDS
 from rotkehlchen.db.eth2 import ETH2_DEPOSITS_PREFIX
 from rotkehlchen.db.loopring import DBLoopring
 from rotkehlchen.db.schema import DB_SCRIPT_CREATE_TABLES
-from rotkehlchen.db.schema import DB_SCRIPT_CREATE_TRANSIENT_TABLES
+from rotkehlchen.db.schema_transient import DB_SCRIPT_CREATE_TRANSIENT_TABLES
 from rotkehlchen.db.settings import (
     DEFAULT_PREMIUM_SHOULD_SYNC,
     ROTKEHLCHEN_DB_VERSION,
@@ -129,6 +129,8 @@ log = RotkehlchenLogsAdapter(logger)
 
 KDF_ITER = 64000
 DBINFO_FILENAME = 'dbinfo.json'
+MAIN_DB_NAME = 'rotkehlchen.db'
+TRANSIENT_DB_NAME = 'rotkehlchen_transient.db'
 PASSWORDCHECK_STATEMENT = 'SELECT name FROM sqlite_master WHERE type="table";'
 
 DBTupleType = Literal[
@@ -323,11 +325,11 @@ class DBHandler:
         # create tables if needed (first run - or some new tables)
         self.conn.executescript(DB_SCRIPT_CREATE_TABLES)
         # set up transient connection
-        self.connect_transient(password)
+        self.connect(password, transient=True)
         # creating tables if necessary
         self.conn_transient.executescript(DB_SCRIPT_CREATE_TRANSIENT_TABLES)
 
-    def get_md5hash(self) -> str:
+    def get_md5hash(self, transient: bool = False) -> str:
         """Get the md5hash of the DB
 
         May raise:
@@ -335,7 +337,10 @@ class DBHandler:
         """
         no_active_connection = not hasattr(self, 'conn') or not self.conn
         assert no_active_connection, 'md5hash should be taken only with a closed DB'
-        return file_md5(self.user_data_dir / 'rotkehlchen.db')
+        if not transient:
+            return file_md5(self.user_data_dir / MAIN_DB_NAME)
+        else:
+            return file_md5(self.user_data_dir / TRANSIENT_DB_NAME)
 
     def read_info_at_start(self) -> DBStartupAction:
         """Read some metadata info at initialization
@@ -405,51 +410,39 @@ class DBHandler:
         )
         self.conn.commit()
 
-    def connect(self, password: str) -> None:
+    def connect(self, password: str, transient: bool = False) -> None:
         """Connect to the DB using password
 
         May raise:
         - SystemPermissionError if we are unable to open the DB file,
         probably due to permission errors
         """
-        fullpath = self.user_data_dir / 'rotkehlchen.db'
+        if not transient:
+            fullpath = self.user_data_dir / MAIN_DB_NAME
+        else:
+            fullpath = self.user_data_dir / TRANSIENT_DB_NAME
         try:
-            self.conn = sqlcipher.connect(str(fullpath))  # pylint: disable=no-member
+            if not transient:
+                self.conn = sqlcipher.connect(str(fullpath))  # pylint: disable=no-member
+            else:
+                self.conn_transient = sqlcipher.connect(str(fullpath))  # pylint: disable=no-member
         except sqlcipher.OperationalError as e:  # pylint: disable=no-member
             raise SystemPermissionError(
                 f'Could not open database file: {fullpath}. Permission errors?',
             ) from e
 
-        self.conn.text_factory = str
+        if not transient:
+            conn = self.conn
+        else:
+            conn = self.conn_transient
+
+        conn.text_factory = str
         password_for_sqlcipher = _protect_password_sqlcipher(password)
         script = f'PRAGMA key="{password_for_sqlcipher}";'
         if self.sqlcipher_version == 3:
             script += f'PRAGMA kdf_iter={KDF_ITER};'
-        self.conn.executescript(script)
-        self.conn.execute('PRAGMA foreign_keys=ON')
-
-    def connect_transient(self, password: str) -> None:
-        """Connect to the transient DB using password
-
-        May raise:
-        - SystemPermissionError if we are unable to open the DB file,
-        probably due to permission errors
-        """
-        fullpath = self.user_data_dir / 'rotkehlchen_transient.db'
-        try:
-            self.conn_transient = sqlcipher.connect(str(fullpath))  # pylint: disable=no-member
-        except sqlcipher.OperationalError as e:  # pylint: disable=no-member
-            raise SystemPermissionError(
-                f'Could not open database file: {fullpath}. Permission errors?',
-            ) from e
-
-        self.conn_transient.text_factory = str
-        password_for_sqlcipher = _protect_password_sqlcipher(password)
-        script = f'PRAGMA key="{password_for_sqlcipher}";'
-        if self.sqlcipher_version == 3:
-            script += f'PRAGMA kdf_iter={KDF_ITER};'
-        self.conn_transient.executescript(script)
-        self.conn_transient.execute('PRAGMA foreign_keys=ON')
+        conn.executescript(script)
+        conn.execute('PRAGMA foreign_keys=ON')
 
     def change_password(self, new_password: str) -> bool:
         """Changes the password for the currently logged in user
@@ -486,13 +479,11 @@ class DBHandler:
 
         return success, msg
 
-    def disconnect(self) -> None:
-        if hasattr(self, 'conn') and self.conn:
+    def disconnect(self, transient: bool = False) -> None:
+        if not transient and hasattr(self, 'conn') and self.conn:
             self.conn.close()
             self.conn = None
-
-    def disconnect_transient(self) -> None:
-        if hasattr(self, 'conn_transient') and self.conn_transient:
+        elif transient and hasattr(self, 'conn_transient') and self.conn_transient:
             self.conn_transient.close()
             self.conn_transient = None
 
@@ -511,7 +502,7 @@ class DBHandler:
         there is a DB upgrade and there is an error.
         """
         self.disconnect()
-        rdbpath = self.user_data_dir / 'rotkehlchen.db'
+        rdbpath = self.user_data_dir / MAIN_DB_NAME
         # Make copy of existing encrypted DB before removing it
         shutil.copy2(
             rdbpath,
