@@ -325,9 +325,10 @@ class DBHandler:
         # create tables if needed (first run - or some new tables)
         self.conn.executescript(DB_SCRIPT_CREATE_TABLES)
         # set up transient connection
-        self.connect(password, transient=True)
+        self.connect(password, conn_attribute='conn_transient')
         # creating tables if necessary
-        self.conn_transient.executescript(DB_SCRIPT_CREATE_TRANSIENT_TABLES)
+        if hasattr(self, 'conn_transient') and self.conn_transient:
+            self.conn_transient.executescript(DB_SCRIPT_CREATE_TRANSIENT_TABLES)
 
     def get_md5hash(self, transient: bool = False) -> str:
         """Get the md5hash of the DB
@@ -337,9 +338,9 @@ class DBHandler:
         """
         no_active_connection = not hasattr(self, 'conn') or not self.conn
         assert no_active_connection, 'md5hash should be taken only with a closed DB'
-        if not transient:
-            return file_md5(self.user_data_dir / MAIN_DB_NAME)
-        return file_md5(self.user_data_dir / TRANSIENT_DB_NAME)
+        if transient:
+            return file_md5(self.user_data_dir / TRANSIENT_DB_NAME)
+        return file_md5(self.user_data_dir / MAIN_DB_NAME)
 
     def read_info_at_start(self) -> DBStartupAction:
         """Read some metadata info at initialization
@@ -409,31 +410,23 @@ class DBHandler:
         )
         self.conn.commit()
 
-    def connect(self, password: str, transient: bool = False) -> None:
+    def connect(self, password: str, conn_attribute: Literal['conn', 'conn_transient'] = 'conn') -> None:
         """Connect to the DB using password
 
         May raise:
         - SystemPermissionError if we are unable to open the DB file,
         probably due to permission errors
         """
-        if not transient:
+        if conn_attribute == 'conn':
             fullpath = self.user_data_dir / MAIN_DB_NAME
         else:
             fullpath = self.user_data_dir / TRANSIENT_DB_NAME
         try:
-            if not transient:
-                self.conn = sqlcipher.connect(str(fullpath))  # pylint: disable=no-member
-            else:
-                self.conn_transient = sqlcipher.connect(str(fullpath))  # pylint: disable=no-member
+            conn = sqlcipher.connect(str(fullpath))  # pylint: disable=no-member
         except sqlcipher.OperationalError as e:  # pylint: disable=no-member
             raise SystemPermissionError(
                 f'Could not open database file: {fullpath}. Permission errors?',
             ) from e
-
-        if not transient:
-            conn = self.conn
-        else:
-            conn = self.conn_transient
 
         conn.text_factory = str
         password_for_sqlcipher = _protect_password_sqlcipher(password)
@@ -442,6 +435,7 @@ class DBHandler:
             script += f'PRAGMA kdf_iter={KDF_ITER};'
         conn.executescript(script)
         conn.execute('PRAGMA foreign_keys=ON')
+        setattr(self, conn_attribute, conn)
 
     def change_password(self, new_password: str) -> bool:
         """Changes the password for the currently logged in user
@@ -478,13 +472,11 @@ class DBHandler:
 
         return success, msg
 
-    def disconnect(self, transient: bool = False) -> None:
-        if not transient and hasattr(self, 'conn') and self.conn:
-            self.conn.close()
-            self.conn = None
-        elif transient and hasattr(self, 'conn_transient') and self.conn_transient:
-            self.conn_transient.close()
-            self.conn_transient = None
+    def disconnect(self, conn_attribute: Literal['conn', 'conn_transient'] = 'conn') -> None:
+        if conn_attribute and hasattr(self, conn_attribute) and getattr(self, conn_attribute):
+            conn = getattr(self, conn_attribute)
+            conn.close()
+            setattr(self, conn_attribute, None)
 
     def export_unencrypted(self, temppath: Path) -> None:
         self.conn.executescript(
