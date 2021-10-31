@@ -231,6 +231,7 @@ class Rotkehlchen():
 
         self.accountant = Accountant(
             db=self.data.db,
+            cache=self.data.cache,
             user_directory=self.user_directory,
             msg_aggregator=self.msg_aggregator,
             create_csv=True,

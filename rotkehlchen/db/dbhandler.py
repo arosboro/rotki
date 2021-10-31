@@ -339,8 +339,7 @@ class DBHandler:
         assert no_active_connection, 'md5hash should be taken only with a closed DB'
         if not transient:
             return file_md5(self.user_data_dir / MAIN_DB_NAME)
-        else:
-            return file_md5(self.user_data_dir / TRANSIENT_DB_NAME)
+        return file_md5(self.user_data_dir / TRANSIENT_DB_NAME)
 
     def read_info_at_start(self) -> DBStartupAction:
         """Read some metadata info at initialization

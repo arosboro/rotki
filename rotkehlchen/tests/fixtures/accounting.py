@@ -96,6 +96,7 @@ def fixture_accounting_initialize_parameters():
 def fixture_accountant(
         price_historian,  # pylint: disable=unused-argument
         database,
+        cache,
         data_dir,
         accounting_create_csv,
         function_scope_messages_aggregator,
@@ -113,6 +114,7 @@ def fixture_accountant(
 
     accountant = Accountant(
         db=database,
+        cache=cache,
         user_directory=data_dir,
         msg_aggregator=function_scope_messages_aggregator,
         create_csv=accounting_create_csv,

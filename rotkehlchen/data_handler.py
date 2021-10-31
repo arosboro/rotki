@@ -11,6 +11,7 @@ from typing import Dict, List, Optional, Tuple
 from rotkehlchen.assets.asset import Asset
 from rotkehlchen.crypto import decrypt, encrypt
 from rotkehlchen.db.dbhandler import DBHandler
+from rotkehlchen.db.taxable_events import DBTaxableEvents
 from rotkehlchen.db.settings import ModifiableDBSettings
 from rotkehlchen.errors import AuthenticationError, SystemPermissionError
 from rotkehlchen.logging import RotkehlchenLogsAdapter
@@ -112,6 +113,10 @@ class DataHandler():
             password=password,
             msg_aggregator=self.msg_aggregator,
             initial_settings=initial_settings,
+        )
+        self.cache: DBTaxableEvents = DBTaxableEvents(
+            database=self.db,
+            msg_aggregator=self.msg_aggregator,
         )
         self.user_data_dir = user_data_dir
         self.logged_in = True

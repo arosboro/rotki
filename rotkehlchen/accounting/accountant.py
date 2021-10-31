@@ -43,6 +43,7 @@ from rotkehlchen.utils.accounting import (
 
 if TYPE_CHECKING:
     from rotkehlchen.db.dbhandler import DBHandler
+    from rotkehlchen.db.taxable_events import DBTaxableEvents
 
 
 logger = logging.getLogger(__name__)
@@ -57,6 +58,7 @@ class Accountant():
     def __init__(
             self,
             db: 'DBHandler',
+            cache: 'DBTaxableEvents',
             user_directory: Path,
             msg_aggregator: MessagesAggregator,
             create_csv: bool,
@@ -67,6 +69,7 @@ class Accountant():
         self.msg_aggregator = msg_aggregator
         self.csvexporter = CSVExporter(
             database=db,
+            cache=cache,
             user_directory=user_directory,
             create_csv=create_csv,
         )
@@ -320,6 +323,7 @@ class Accountant():
         self.eth_transactions_gas_costs = FVal(0)
         self.asset_movement_fees = FVal(0)
         self.csvexporter.reset()
+        self.csvexporter.add_report(start_ts, end_ts)
 
         # Ask the DB for the settings once at the start of processing so we got the
         # same settings through the entire task
@@ -463,7 +467,7 @@ class Accountant():
             'first_processed_timestamp': self.first_processed_timestamp,
             'events_processed': count,
             'events_limit': events_limit,
-            'all_events': self.csvexporter.all_events,
+            'all_events': self.csvexporter.get_events(),
         }
 
     @staticmethod
