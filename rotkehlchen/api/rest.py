@@ -1599,10 +1599,16 @@ class RestAPI():
 
     def _process_history(
             self,
+            report_id: int,
+            page: int,
+            rows: int,
             from_timestamp: Timestamp,
             to_timestamp: Timestamp,
     ) -> Dict[str, Any]:
         result, error_or_empty = self.rotkehlchen.process_history(
+            report_id=report_id,
+            page=page,
+            rows=rows,
             start_ts=from_timestamp,
             end_ts=to_timestamp,
         )
@@ -1611,6 +1617,9 @@ class RestAPI():
     @require_loggedin_user()
     def process_history(
             self,
+            report_id: int,
+            page: int,
+            rows: int,
             from_timestamp: Timestamp,
             to_timestamp: Timestamp,
             async_query: bool,
@@ -1618,11 +1627,17 @@ class RestAPI():
         if async_query:
             return self._query_async(
                 command='_process_history',
+                report_id=report_id,
+                rows=rows,
+                page=page,
                 from_timestamp=from_timestamp,
                 to_timestamp=to_timestamp,
             )
 
         response = self._process_history(
+            report_id=report_id,
+            page=page,
+            rows=rows,
             from_timestamp=from_timestamp,
             to_timestamp=to_timestamp,
         )

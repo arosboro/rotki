@@ -1365,6 +1365,9 @@ class StatisticsValueDistributionSchema(Schema):
 
 
 class HistoryProcessingSchema(Schema):
+    report_id = fields.Integer(load_default=0)
+    page = fields.Integer(load_default=0)
+    rows = fields.Integer(load_default=10)
     from_timestamp = TimestampField(load_default=Timestamp(0))
     to_timestamp = TimestampField(load_default=ts_now)
     async_query = fields.Boolean(load_default=False)

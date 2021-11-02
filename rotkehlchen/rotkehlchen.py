@@ -300,6 +300,7 @@ class Rotkehlchen():
         self.events_historian = EventsHistorian(
             user_directory=self.user_directory,
             db=self.data.db,
+            cache=self.data.cache,
             msg_aggregator=self.msg_aggregator,
             exchange_manager=self.exchange_manager,
             chain_manager=self.chain_manager,
@@ -563,6 +564,9 @@ class Rotkehlchen():
 
     def process_history(
             self,
+            report_id: int,
+            page: int,
+            rows: int,
             start_ts: Timestamp,
             end_ts: Timestamp,
     ) -> Tuple[Dict[str, Any], str]:
@@ -575,11 +579,15 @@ class Rotkehlchen():
             defi_events,
             ledger_actions,
         ) = self.events_historian.get_history(
+            report_id=report_id,
             start_ts=start_ts,
             end_ts=end_ts,
             has_premium=self.premium is not None,
         )
         result = self.accountant.process_history(
+            report_id=report_id,
+            page=page,
+            rows=rows,
             start_ts=start_ts,
             end_ts=end_ts,
             trade_history=history,

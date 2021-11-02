@@ -60,11 +60,12 @@ def price_historian(
 
 
 @pytest.fixture
-def events_historian(database, data_dir, function_scope_messages_aggregator, blockchain):
+def events_historian(database, cache, data_dir, function_scope_messages_aggregator, blockchain):
     exchange_manager = ExchangeManager(msg_aggregator=function_scope_messages_aggregator)
     historian = EventsHistorian(
         user_directory=data_dir,
         db=database,
+        cache=cache,
         msg_aggregator=function_scope_messages_aggregator,
         exchange_manager=exchange_manager,
         chain_manager=blockchain,

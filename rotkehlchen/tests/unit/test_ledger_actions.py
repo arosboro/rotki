@@ -181,6 +181,9 @@ def test_taxable_ledger_action_setting(accountant, expected_pnl):
     ]
     result = accounting_history_process(
         accountant,
+        0,
+        0,
+        10,
         1436979735,
         1519693374,
         history_list=[],
@@ -267,6 +270,9 @@ def test_ledger_actions_accounting(accountant):
 
     result = accounting_history_process(
         accountant=accountant,
+        report_id=0,
+        page=0,
+        rows=10,
         start_ts=1436979735,
         end_ts=1519693374,
         history_list=[],

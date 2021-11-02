@@ -81,6 +81,30 @@ class DBTaxableEvents():
 
         events = []
         for result in results:
+            log.debug(f"get_events result: {result}")
+            try:
+                event = deserialize_from_db(result[0])
+            except DeserializationError as e:
+                self.msg_aggregator.add_error(
+                    f'Error deserializing PnL Event for Report from the DB. Skipping it.'
+                    f'Error was: {str(e)}',
+                )
+                continue
+
+            events.append(event)
+
+        return events
+
+    def get_all_events(self, report_id: int) -> List[Dict[str, Any]]:
+        cursor = self.db.conn_transient.cursor()
+        query = """
+                SELECT data from pnl_events
+                WHERE report_id = ?
+                ORDER BY timestamp asc;"""
+        results = cursor.execute(query, report_id)
+
+        events = []
+        for result in results:
             log.debug(f"get_all_events result: {result}")
             try:
                 event = deserialize_from_db(result[0])

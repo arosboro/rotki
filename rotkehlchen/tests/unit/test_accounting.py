@@ -62,7 +62,7 @@ history1 = [
 
 @pytest.mark.parametrize('mocked_price_queries', [prices])
 def test_simple_accounting(accountant):
-    accounting_history_process(accountant, 1436979735, 1495751688, history1)
+    accounting_history_process(accountant, 0, 0, 10, 1436979735, 1495751688, history1)
     assert accountant.general_trade_pl.is_close('558.25365490257463')
     assert accountant.taxable_trade_pl.is_close('558.25365490257463')
 
@@ -100,7 +100,7 @@ def test_selling_crypto_bought_with_crypto(accountant):
         'amount': 45,
         'location': 'kraken',
     }]
-    accounting_history_process(accountant, 1436979735, 1495751688, history)
+    accounting_history_process(accountant, 0, 0, 10, 1436979735, 1495751688, history)
     # Make sure buying XMR with BTC also creates a BTC sell
     sells = accountant.events.cost_basis.get_events(A_BTC).spends
     assert len(sells) == 1
@@ -159,7 +159,7 @@ def test_buying_selling_eth_before_daofork(accountant):
             'location': 'kraken',
         },
     ]
-    accounting_history_process(accountant, 1436979735, 1495751688, history3)
+    accounting_history_process(accountant, 0, 0, 10, 1436979735, 1495751688, history3)
     # make sure that the intermediate ETH sell before the fork reduced our ETC
     assert accountant.events.cost_basis.get_calculated_asset_amount('ETC') == FVal(850)
     assert accountant.events.cost_basis.get_calculated_asset_amount('ETH') == FVal(1390)
@@ -210,7 +210,7 @@ def test_buying_selling_btc_before_bchfork(accountant):
         'amount': 1.2,
         'location': 'kraken',
     }]
-    accounting_history_process(accountant, 1436979735, 1519693374, history)
+    accounting_history_process(accountant, 0, 0, 10, 1436979735, 1519693374, history)
 
     amount_bch = FVal(3.9)
     amount_btc = FVal(4.8)
@@ -307,7 +307,7 @@ def test_buying_selling_bch_before_bsvfork(accountant):
         'amount': 0.5,
         'location': 'kraken',
     }]
-    accounting_history_process(accountant, 1436979735, 1569693374, history)
+    accounting_history_process(accountant, 0, 0, 10, 1436979735, 1569693374, history)
 
     amount_btc = FVal(4.8)
     amount_bch = FVal(4.1)
@@ -348,7 +348,7 @@ history5 = history1 + [{
     'include_crypto2crypto': False,
 }])
 def test_nocrypto2crypto(accountant):
-    accounting_history_process(accountant, 1436979735, 1519693374, history5)
+    accounting_history_process(accountant, 0, 0, 10, 1436979735, 1519693374, history5)
     # Expected = 3 trades + the creation of ETC, BCH and BSV after fork times
     msg = 'The crypto to crypto trades should not appear in the list at all'
     assert len(accountant.csvexporter.all_events) == 6, msg
@@ -362,7 +362,7 @@ def test_nocrypto2crypto(accountant):
     'taxfree_after_period': -1,
 }])
 def test_no_taxfree_period(accountant):
-    accounting_history_process(accountant, 1436979735, 1519693374, history5)
+    accounting_history_process(accountant, 0, 0, 10, 1436979735, 1519693374, history5)
     assert accountant.general_trade_pl.is_close('265251.6872977225746')
     assert accountant.taxable_trade_pl.is_close('265251.6872977225746')
 
@@ -372,7 +372,7 @@ def test_no_taxfree_period(accountant):
     'taxfree_after_period': 86400,
 }])
 def test_big_taxfree_period(accountant):
-    accounting_history_process(accountant, 1436979735, 1519693374, history5)
+    accounting_history_process(accountant, 0, 0, 10, 1436979735, 1519693374, history5)
     assert accountant.general_trade_pl.is_close('265251.6872977225746375')
     assert accountant.taxable_trade_pl.is_close('0')
 
@@ -400,7 +400,7 @@ def test_buy_event_creation(accountant):
         'amount': 5,
         'location': 'kraken',
     }]
-    accounting_history_process(accountant, 1436979735, 1519693374, history)
+    accounting_history_process(accountant, 0, 0, 10, 1436979735, 1519693374, history)
     buys = accountant.events.cost_basis.get_events(A_BTC).acquisitions
     assert len(buys) == 2
     assert buys[0].amount == FVal(5)
@@ -462,6 +462,9 @@ def test_not_include_gas_costs(accountant):
     ]
     result = accounting_history_process(
         accountant,
+        0,
+        0,
+        10,
         1436979735,
         1519693374,
         history,
@@ -494,7 +497,7 @@ def test_ignored_assets(accountant):
         'amount': 5,
         'location': 'kraken',
     }]
-    result = accounting_history_process(accountant, 1436979735, 1519693374, history)
+    result = accounting_history_process(accountant, 0, 0, 10, 1436979735, 1519693374, history)
     assert FVal(result['overview']['total_taxable_profit_loss']).is_close('558.253654902574637500')
 
 
@@ -534,6 +537,9 @@ def test_settlement_buy(accountant):
 
     result = accounting_history_process(
         accountant,
+        0,
+        0,
+        10,
         1436979735,
         1519693374,
         history,
@@ -590,6 +596,9 @@ def test_margin_events_affect_gained_lost_amount(accountant):
 
     result = accounting_history_process(
         accountant,
+        0,
+        0,
+        10,
         1436979735,
         1519693374,
         history,
@@ -617,6 +626,9 @@ def test_no_corresponding_buy_for_sell(accountant):
 
     result = accounting_history_process(
         accountant,
+        0,
+        0,
+        10,
         1436979735,
         1519693374,
         history,
@@ -631,6 +643,9 @@ def test_accounting_works_for_empty_history(accountant):
 
     result = accounting_history_process(
         accountant,
+        0,
+        0,
+        10,
         1436979735,
         1519693374,
         history,
@@ -675,6 +690,9 @@ def test_assets_movements_not_accounted_for(accountant, expected):
 
     result = accounting_history_process(
         accountant,
+        0,
+        0,
+        10,
         1436979735,
         1519693374,
         history,
@@ -727,6 +745,9 @@ def test_not_calculate_past_cost_basis(accountant, db_settings):
     }]
     result = accounting_history_process(
         accountant=accountant,
+        report_id=0,
+        page=0,
+        rows=10,
         start_ts=1466979735,
         end_ts=1519693374,
         history_list=history,
@@ -776,6 +797,9 @@ def test_defi_event_zero_amount(accountant):
     )]
     result = accounting_history_process(
         accountant=accountant,
+        report_id=0,
+        page=0,
+        rows=10,
         start_ts=1466979735,
         end_ts=1519693374,
         history_list=[],
@@ -842,6 +866,9 @@ def test_sell_fiat_for_crypto(accountant):
     }]
     result = accounting_history_process(
         accountant,
+        0,
+        0,
+        10,
         1436979735,
         1519693374,
         history,
@@ -894,6 +921,9 @@ def test_fees_count_in_cost_basis(accountant):
     }]
     result = accounting_history_process(
         accountant,
+        0,
+        0,
+        10,
         1436979735,
         1625001466,
         history,

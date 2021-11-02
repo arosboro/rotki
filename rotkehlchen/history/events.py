@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from rotkehlchen.accounting.structures import DefiEvent
     from rotkehlchen.chain.manager import ChainManager
     from rotkehlchen.db.dbhandler import DBHandler
+    from rotkehlchen.db.taxable_events import DBTaxableEvents
 
 logger = logging.getLogger(__name__)
 log = RotkehlchenLogsAdapter(logger)
@@ -104,6 +105,7 @@ class EventsHistorian():
             self,
             user_directory: Path,
             db: 'DBHandler',
+            cache: 'DBTaxableEvents',
             msg_aggregator: MessagesAggregator,
             exchange_manager: ExchangeManager,
             chain_manager: 'ChainManager',
@@ -112,6 +114,7 @@ class EventsHistorian():
         self.msg_aggregator = msg_aggregator
         self.user_directory = user_directory
         self.db = db
+        self.cache = cache
         self.exchange_manager = exchange_manager
         self.chain_manager = chain_manager
         db_settings = self.db.get_settings()
@@ -521,6 +524,7 @@ class EventsHistorian():
 
     def get_history(
             self,
+            report_id: int,
             start_ts: Timestamp,
             end_ts: Timestamp,
             has_premium: bool,
@@ -528,7 +532,8 @@ class EventsHistorian():
         """Creates trades and loans history from start_ts to end_ts"""
         self._reset_variables()
         step = 0
-        total_steps = len(self.exchange_manager.connected_exchanges) + NUM_HISTORY_QUERY_STEPS_EXCL_EXCHANGES  # noqa: E501
+        total_steps = len(
+            self.exchange_manager.connected_exchanges) + NUM_HISTORY_QUERY_STEPS_EXCL_EXCHANGES  # noqa: E501
         log.info(
             'Get/create trade history',
             start_ts=start_ts,
@@ -564,6 +569,21 @@ class EventsHistorian():
                     start_ts=Timestamp(0),
                     end_ts=end_ts,
                 ))
+
+        if report_id:
+            events = self.cache.get_all_events(report_id)
+            actions = map(lambda x: x[next(iter(x))], events)
+
+            return (
+                empty_or_error,
+                list(filter(lambda x: type(x) in [Trade, MarginPosition, AMMTrade], actions)),
+                list(filter(lambda x: type(x) in ['Loan'], actions)),
+                list(filter(lambda x: type(x) in ['AssetMovement'], actions)),
+                list(filter(lambda x: type(x) in ['EthereumTransaction'],
+                            actions)),
+                list(filter(lambda x: type(x) in ['DefiEvent'], actions)),
+                list(filter(lambda x: type(x) in ['LedgerAction'], actions)),
+            )
 
         def fail_history_cb(error_msg: str) -> None:
             """This callback will run for failure in exchange history query"""

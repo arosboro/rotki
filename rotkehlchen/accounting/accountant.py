@@ -291,6 +291,9 @@ class Accountant():
 
     def process_history(
             self,
+            report_id: int,
+            page: int,
+            rows: int,
             start_ts: Timestamp,
             end_ts: Timestamp,
             trade_history: List[Union[Trade, MarginPosition, AMMTrade]],
@@ -323,7 +326,11 @@ class Accountant():
         self.eth_transactions_gas_costs = FVal(0)
         self.asset_movement_fees = FVal(0)
         self.csvexporter.reset()
-        self.csvexporter.add_report(start_ts, end_ts)
+        if report_id:
+            self.csvexporter.report_id = report_id
+            self.csvexporter.cached = True
+        else:
+            self.csvexporter.add_report(start_ts, end_ts)
 
         # Ask the DB for the settings once at the start of processing so we got the
         # same settings through the entire task
@@ -467,7 +474,7 @@ class Accountant():
             'first_processed_timestamp': self.first_processed_timestamp,
             'events_processed': count,
             'events_limit': events_limit,
-            'all_events': self.csvexporter.get_events(),
+            'all_events': self.csvexporter.get_events(page, rows),
         }
 
     @staticmethod

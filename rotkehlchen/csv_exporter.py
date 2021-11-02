@@ -105,6 +105,7 @@ class CSVExporter():
         self.create_csv = create_csv
         self.all_events: List[Dict[str, Any]] = []
         self.report_id: int = 0
+        self.cached: bool = False
         self.reset()
 
         # get setting for prefered eth explorer
@@ -143,12 +144,13 @@ class CSVExporter():
             self.all_events_csv: List[Dict[str, Any]] = []
         self.all_events = []
         self.report_id = 0
+        self.cached = False
 
     def add_report(self, start_ts: Timestamp, end_ts: Timestamp) -> None:
         self.report_id = self.cache.add_report(start_ts, end_ts)
 
-    def get_events(self) -> List[Dict[str, Any]]:
-        return self.cache.get_events(self.report_id)
+    def get_events(self, page: int, rows: int) -> List[Dict[str, Any]]:
+        return self.cache.get_events(self.report_id, page=page, rows_per_page=rows)
 
     def timestamp_to_date(self, timestamp: Timestamp) -> str:
         return timestamp_to_date(
@@ -416,7 +418,8 @@ class CSVExporter():
             'notes': notes,
         }
         log.debug('csv event', **entry)
-        self.cache.add_event(self.report_id, timestamp, entry)
+        if not self.cached:
+            self.cache.add_event(self.report_id, timestamp, entry)
         new_entry = entry.copy()
         # deleting and read link and notes for them to be at the end
         del new_entry['link']

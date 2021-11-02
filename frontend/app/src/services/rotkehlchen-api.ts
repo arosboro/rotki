@@ -397,11 +397,20 @@ export class RotkehlchenApi {
       .then(handleResponse);
   }
 
-  processTradeHistoryAsync(start: number, end: number): Promise<PendingTask> {
+  processTradeHistoryAsync(
+    report_id: number,
+    page: number,
+    rows: number,
+    start: number,
+    end: number
+  ): Promise<PendingTask> {
     return this.axios
       .get<ActionResult<PendingTask>>('/history/', {
         params: {
           async_query: true,
+          report_id: 0,
+          page: 0,
+          rows: 10,
           from_timestamp: start,
           to_timestamp: end
         },
