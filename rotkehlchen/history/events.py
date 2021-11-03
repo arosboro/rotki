@@ -572,17 +572,17 @@ class EventsHistorian():
 
         if report_id:
             events = self.cache.get_all_events(report_id)
-            actions = map(lambda x: x[next(iter(x))], events)
+            actions = [y for x in events for x.values]
 
             return (
                 empty_or_error,
                 list(filter(lambda x: type(x) in [Trade, MarginPosition, AMMTrade], actions)),
-                list(filter(lambda x: type(x) in ['Loan'], actions)),
-                list(filter(lambda x: type(x) in ['AssetMovement'], actions)),
-                list(filter(lambda x: type(x) in ['EthereumTransaction'],
+                list(filter(lambda x: type(x) in [Loan], actions)),
+                list(filter(lambda x: type(x) in [AssetMovement], actions)),
+                list(filter(lambda x: type(x) in [EthereumTransaction],
                             actions)),
-                list(filter(lambda x: type(x) in ['DefiEvent'], actions)),
-                list(filter(lambda x: type(x) in ['LedgerAction'], actions)),
+                list(filter(lambda x: type(x) in [DefiEvent], actions)),
+                list(filter(lambda x: type(x) in [LedgerAction], actions)),
             )
 
         def fail_history_cb(error_msg: str) -> None:
