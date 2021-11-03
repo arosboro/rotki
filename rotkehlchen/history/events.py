@@ -572,7 +572,7 @@ class EventsHistorian():
 
         if report_id:
             events = self.cache.get_all_events(report_id)
-            actions = [y for x in events for x.values]
+            actions = [y for x in events for y in x.values]
 
             return (
                 empty_or_error,
