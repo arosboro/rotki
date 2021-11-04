@@ -14,7 +14,18 @@ if TYPE_CHECKING:
     from rotkehlchen.db.dbhandler import DBHandler
 
 
-def serialize_to_db(event: Dict[str, Any]) -> bytes:
+def deserialize_report_from_db(report: Any) -> Dict[str, Any]:
+    return {
+        'identifier': report[0],
+        'name': report[1],
+        'created': report[2],
+        'start_ts': report[3],
+        'end_ts': report[4],
+        'size_on_disk': report[5],
+    }
+
+
+def serialize_event_to_db(event: Dict[str, Any]) -> bytes:
     """
     Serialize the event for insertion into the database.
     :param event:
@@ -23,7 +34,7 @@ def serialize_to_db(event: Dict[str, Any]) -> bytes:
     return pickle.dumps(event)
 
 
-def deserialize_from_db(result: bytes) -> Dict[str, Any]:
+def deserialize_event_from_db(result: bytes) -> Dict[str, Any]:
     """
     Deserialize the event as it was stored in the database.
 
@@ -38,6 +49,34 @@ class DBTaxableEvents():
     def __init__(self, database: 'DBHandler', msg_aggregator: MessagesAggregator):
         self.db = database
         self.msg_aggregator = msg_aggregator
+
+    def get_reports(self,
+                    page: int,
+                    rows_per_page: int = 10,
+                    report_id: int = 0) -> List[Dict[str, Any]]:
+        cursor = self.db.conn_transient.cursor()
+        offset = page * rows_per_page
+        selected = report_id if report_id else '*'
+        query = """
+        SELECT ? FROM pnl_reports
+        LIMIT ? OFFSET ?"""
+        results = cursor.execute(query, (selected, rows_per_page, offset))
+
+        reports = []
+        for result in results:
+            log.debug(f"get_reports result: {result}")
+            try:
+                report = deserialize_report_from_db(result)
+            except DeserializationError as e:
+                self.msg_aggregator.add_error(
+                    f'Error deserializing PnL Report for index from the DB. Skipping it.'
+                    f'Error was: {str(e)}',
+                )
+                continue
+
+            reports.append(report)
+
+        return reports
 
     def add_report(self, start_ts: Timestamp, end_ts: Timestamp) -> int:
         cursor = self.db.conn_transient.cursor()
@@ -63,7 +102,7 @@ class DBTaxableEvents():
             report_id, timestamp, data
         )
         VALUES(?, ?, ?);"""
-        cursor.execute(query, (report_id, time, serialize_to_db(event)))
+        cursor.execute(query, (report_id, time, serialize_event_to_db(event)))
         self.db.conn_transient.commit()
 
     def get_events(self,
@@ -83,7 +122,7 @@ class DBTaxableEvents():
         for result in results:
             log.debug(f"get_events result: {result}")
             try:
-                event = deserialize_from_db(result[0])
+                event = deserialize_event_from_db('event', result[0])
             except DeserializationError as e:
                 self.msg_aggregator.add_error(
                     f'Error deserializing PnL Event for Report from the DB. Skipping it.'
@@ -107,7 +146,7 @@ class DBTaxableEvents():
         for result in results:
             log.debug(f"get_all_events result: {result}")
             try:
-                event = deserialize_from_db(result[0])
+                event = deserialize_event_from_db(result[0])
             except DeserializationError as e:
                 self.msg_aggregator.add_error(
                     f'Error deserializing PnL Event for Report from the DB. Skipping it.'

@@ -3705,3 +3705,13 @@ class RestAPI():
 
         filepath.unlink()  # should not raise file not found as marshmallow should check
         return api_response(OK_RESULT, status_code=HTTPStatus.OK)
+
+    @require_loggedin_user()
+    def get_history_reports(self, report_id: int, page: int, rows: int) -> Response:
+        result = self.rotkehlchen.data.cache.get_reports(
+            report_id=report_id,
+            page=page,
+            rows_per_page=rows
+        )
+
+        return api_response(result, status_code=HTTPStatus.OK)

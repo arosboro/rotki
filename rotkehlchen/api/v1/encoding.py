@@ -1373,6 +1373,12 @@ class HistoryProcessingSchema(Schema):
     async_query = fields.Boolean(load_default=False)
 
 
+class HistoryReportingSchema(Schema):
+    report_id = fields.Integer(load_default=0)
+    page = fields.Integer(load_defualt=0)
+    rows = fields.Integer(load_default=10)
+
+
 class HistoryExportingSchema(Schema):
     directory_path = DirectoryField(required=True)
 

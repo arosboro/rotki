@@ -94,7 +94,7 @@ from rotkehlchen.api.v1.encoding import (
     WatchersDeleteSchema,
     WatchersEditSchema,
     XpubAddSchema,
-    XpubPatchSchema,
+    XpubPatchSchema, HistoryReportingSchema,
 )
 from rotkehlchen.api.v1.parser import ignore_kwarg_parser, resource_parser
 from rotkehlchen.assets.asset import Asset, EthereumToken
@@ -951,6 +951,23 @@ class HistoryProcessingResource(BaseResource):
             from_timestamp=from_timestamp,
             to_timestamp=to_timestamp,
             async_query=async_query,
+        )
+
+
+class HistoryReportingResource(BaseResource):
+
+    get_schema = HistoryReportingSchema()
+
+    @use_kwargs(get_schema, location='json_and_query')
+    def get(self,
+            report_id: int,
+            page: int,
+            rows: int,
+            ) -> Response:
+        return self.rest_api.get_history_reports(
+            report_id=report_id,
+            page=page,
+            rows=rows,
         )
 
 
