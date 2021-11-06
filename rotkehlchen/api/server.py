@@ -65,7 +65,7 @@ from rotkehlchen.api.v1.resources import (
     HistoryDownloadingResource,
     HistoryExportingResource,
     HistoryProcessingResource,
-    HistoryReportingResource,
+    HistoryReportsResource,
     HistoryStatusResource,
     IgnoredActionsResource,
     IgnoredAssetsResource,
@@ -177,12 +177,7 @@ URLS_V1: URLS = [
     ('/history/status', HistoryStatusResource),
     ('/history/export/', HistoryExportingResource),
     ('/history/download/', HistoryDownloadingResource),
-    ('/history/reports/', HistoryReportingResource),
-    (
-        '/history/reports/<int:report_id>',
-        HistoryReportingResource,
-        'per_report_history_reporting_resource',
-    ),
+    ('/reports/', HistoryReportsResource),
     ('/queried_addresses', QueriedAddressesResource),
     ('/blockchains/ETH/transactions', EthereumTransactionsResource),
     (

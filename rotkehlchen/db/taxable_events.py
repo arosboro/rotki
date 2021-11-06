@@ -6,6 +6,7 @@ from rotkehlchen.errors import DeserializationError
 from rotkehlchen.logging import RotkehlchenLogsAdapter
 from rotkehlchen.typing import Timestamp
 from rotkehlchen.user_messages import MessagesAggregator
+from rotkehlchen.utils.misc import ts_now
 
 logger = logging.getLogger(__name__)
 log = RotkehlchenLogsAdapter(logger)
@@ -50,17 +51,31 @@ class DBTaxableEvents():
         self.db = database
         self.msg_aggregator = msg_aggregator
 
-    def get_reports(self,
-                    page: int,
-                    rows_per_page: int = 10,
-                    report_id: int = 0) -> List[Dict[str, Any]]:
+    def get_reports_info(self):
         cursor = self.db.conn_transient.cursor()
-        offset = page * rows_per_page
-        selected = report_id if report_id else '*'
+        query = """SELECT COUNT(identifier) FROM pnl_reports"""
+        results = cursor.execute(query)
+        for result in results:
+            log.debug(f"get_reports_info: {result}")
+            return result[0]
+
+    def get_reports(self,
+                    page: int = 1,
+                    rows_per_page: int = 10) -> List[Dict[str, Any]]:
+        cursor = self.db.conn_transient.cursor()
+        offset = (page - 1) * rows_per_page
+        records = self.get_reports_info()
         query = """
-        SELECT ? FROM pnl_reports
+        SELECT
+            identifier,
+            name,
+            created,
+            start_ts,
+            end_ts,
+            size_on_disk
+        FROM pnl_reports
         LIMIT ? OFFSET ?"""
-        results = cursor.execute(query, (selected, rows_per_page, offset))
+        results = cursor.execute(query, (rows_per_page, offset))
 
         reports = []
         for result in results:
@@ -76,16 +91,24 @@ class DBTaxableEvents():
 
             reports.append(report)
 
-        return reports
+        result_dict = {
+            "page": page,
+            "pages": round(records / rows_per_page) if rows_per_page else rows_per_page,
+            "records": records,
+            "reports": reports,
+        }
+
+        return result_dict
 
     def add_report(self, start_ts: Timestamp, end_ts: Timestamp) -> int:
         cursor = self.db.conn_transient.cursor()
+        created = ts_now()
         query = """
         INSERT INTO pnl_reports(
-            name, start_ts, end_ts
+            name, created, start_ts, end_ts
         )
-        VALUES (?, ?, ?)"""
-        cursor.execute(query, (f"Report from {start_ts} to {end_ts}", start_ts, end_ts))
+        VALUES (?, ?, ?, ?)"""
+        cursor.execute(query, (f"Report from {start_ts} to {end_ts}", created, start_ts, end_ts))
         identifier = cursor.lastrowid
         self.db.conn_transient.commit()
         return identifier
@@ -107,7 +130,7 @@ class DBTaxableEvents():
 
     def get_events(self,
                    report_id: int,
-                   page: int = 0,
+                   page: int = 1,
                    rows_per_page: int = 10) -> List[Dict[str, Any]]:
         cursor = self.db.conn_transient.cursor()
         offset = page * rows_per_page
@@ -122,7 +145,7 @@ class DBTaxableEvents():
         for result in results:
             log.debug(f"get_events result: {result}")
             try:
-                event = deserialize_event_from_db('event', result[0])
+                event = deserialize_event_from_db(result[0])
             except DeserializationError as e:
                 self.msg_aggregator.add_error(
                     f'Error deserializing PnL Event for Report from the DB. Skipping it.'

@@ -3707,11 +3707,10 @@ class RestAPI():
         return api_response(OK_RESULT, status_code=HTTPStatus.OK)
 
     @require_loggedin_user()
-    def get_history_reports(self, report_id: int, page: int, rows: int) -> Response:
-        result = self.rotkehlchen.data.cache.get_reports(
-            report_id=report_id,
+    def get_history_reports(self, page: int = 1, rows: int = 10) -> Response:
+        result_dict = self.rotkehlchen.data.cache.get_reports(
             page=page,
             rows_per_page=rows
         )
 
-        return api_response(result, status_code=HTTPStatus.OK)
+        return api_response(_wrap_in_ok_result(result_dict), status_code=HTTPStatus.OK)

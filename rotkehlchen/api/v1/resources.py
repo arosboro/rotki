@@ -954,7 +954,7 @@ class HistoryProcessingResource(BaseResource):
         )
 
 
-class HistoryReportingResource(BaseResource):
+class HistoryReportsResource(BaseResource):
 
     get_schema = HistoryReportingSchema()
 
@@ -965,7 +965,6 @@ class HistoryReportingResource(BaseResource):
             rows: int,
             ) -> Response:
         return self.rest_api.get_history_reports(
-            report_id=report_id,
             page=page,
             rows=rows,
         )
