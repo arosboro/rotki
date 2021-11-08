@@ -4,7 +4,7 @@ import { Section, Status } from '@/store/const';
 import { DefiState } from '@/store/defi/types';
 import { HistoryState } from '@/store/history/types';
 import { NotificationState } from '@/store/notifications/state';
-import { ReportState } from '@/store/reports/state';
+import { ReportState } from '@/store/reports/types';
 import { SessionState } from '@/store/session/types';
 import { SettingsState } from '@/store/settings/state';
 import { StatisticsState } from '@/store/statistics/types';

@@ -1,22 +1,26 @@
-import { ActionTree } from 'vuex';
-import i18n from '@/i18n';
-import { api } from '@/services/rotkehlchen-api';
-import {
-  emptyError,
-  MUTATION_PROGRESS,
-  MUTATION_REPORT_ERROR
-} from '@/store/reports/const';
-import { ReportState } from '@/store/reports/state';
 import {
   ReportError,
   ReportProgress,
   TradeHistory
-} from '@/store/reports/types';
+} from '@rotki/common/lib/reports';
+import { ActionTree } from 'vuex';
+import i18n from '@/i18n';
+import { api } from '@/services/rotkehlchen-api';
+import { userNotify } from '@/store/notifications/utils';
+import {
+  ReportActions,
+  emptyError,
+  ReportMutations,
+  MUTATION_PROGRESS,
+  MUTATION_REPORT_ERROR
+} from '@/store/reports/const';
+import { ReportState } from '@/store/reports/types';
 
 import { Message, RotkehlchenState } from '@/store/types';
 import { ProfitLossPeriod } from '@/types/pnl';
 import { createTask, taskCompletion, TaskMeta } from '@/types/task';
 import { TaskType } from '@/types/task-type';
+import { logger } from '@/utils/logging';
 
 export const actions: ActionTree<ReportState, RotkehlchenState> = {
   async generate({ commit, rootState }, payload: ProfitLossPeriod) {
@@ -117,6 +121,28 @@ export const actions: ActionTree<ReportState, RotkehlchenState> = {
     } as ReportProgress);
   },
 
+  async [ReportActions.FETCH_REPORTS]({ state, commit }) {
+    const notify = async (error?: any) => {
+      logger.error(error);
+      const message = error?.message ?? error ?? '';
+      await userNotify({
+        title: i18n.t('actions.reports.fetch.error.title').toString(),
+        message: i18n
+          .t('actions.reports.fetch.error.description', { message })
+          .toString(),
+        display: true
+      });
+    };
+    try {
+      const result = await api.reports.fetchReports(
+        state.index.page,
+        state.index.rows
+      );
+      commit(ReportMutations.SET_REPORTS, result);
+    } catch (e: any) {
+      await notify(e);
+    }
+  },
   async createCSV({ commit }, path: string) {
     let message: Message;
     try {

@@ -1,39 +1,49 @@
+import {
+  PagedReport,
+  ReportError,
+  ReportPeriod,
+  ReportProgress,
+  ReportsTableData
+} from '@rotki/common/lib/reports';
 import { MutationTree } from 'vuex';
 import {
   MUTATION_PROGRESS,
-  MUTATION_REPORT_ERROR
+  MUTATION_REPORT_ERROR,
+  ReportMutations
 } from '@/store/reports/const';
-import { defaultState, ReportState } from '@/store/reports/state';
-import {
-  ReportData,
-  ReportError,
-  ReportPeriod,
-  ReportProgress
-} from '@/store/reports/types';
+import { defaultState } from '@/store/reports/state';
 
+import { ReportState } from '@/store/reports/types';
 import { AccountingSettings } from '@/types/user';
 
 export const mutations: MutationTree<ReportState> = {
-  set(state: ReportState, payload: ReportData) {
+  [ReportMutations.SET_REPORT](state: ReportState, payload: PagedReport) {
     const { overview, events, processed, limit, firstProcessedTimestamp } =
       payload;
-    state.overview = { ...overview };
-    state.events = [...events];
-    state.processed = processed;
-    state.limit = limit;
-    state.loaded = true;
-    state.firstProcessedTimestamp = firstProcessedTimestamp;
+    state.data.overview = { ...overview };
+    state.data.events = [...events];
+    state.data.processed = processed;
+    state.data.limit = limit;
+    state.data.loaded = true;
+    state.data.firstProcessedTimestamp = firstProcessedTimestamp;
   },
 
-  currency(state: ReportState, currency: string) {
+  [ReportMutations.SET_REPORTS](state: ReportState, payload: ReportsTableData) {
+    state.index = payload;
+  },
+
+  [ReportMutations.CURRENCY](state: ReportState, currency: string) {
     state.currency = currency;
   },
 
-  reportPeriod(state: ReportState, payload: ReportPeriod) {
+  [ReportMutations.REPORT_PERIOD](state: ReportState, payload: ReportPeriod) {
     state.reportPeriod = payload;
   },
 
-  accountingSettings(state: ReportState, payload: AccountingSettings) {
+  [ReportMutations.ACCOUNT_SETTINGS](
+    state: ReportState,
+    payload: AccountingSettings
+  ) {
     state.accountingSettings = payload;
   },
 

@@ -4,6 +4,7 @@ import {
   GitcoinGrantReport,
   GitcoinReportPayload
 } from '@rotki/common/lib/gitcoin';
+import { ReportProgress } from '@rotki/common/lib/reports';
 import { AxiosInstance, AxiosTransformer } from 'axios';
 import {
   axiosSnakeCaseTransformer,

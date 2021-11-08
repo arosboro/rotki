@@ -94,6 +94,7 @@ class DBTaxableEvents():
         result_dict = {
             "page": page,
             "pages": round(records / rows_per_page) if rows_per_page else rows_per_page,
+            "rows": rows_per_page,
             "records": records,
             "reports": reports,
         }
