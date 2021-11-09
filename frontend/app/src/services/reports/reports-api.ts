@@ -28,7 +28,7 @@ export class ReportsApi {
       .get<ActionResult<ReportsTableData>>('/reports', {
         params: { page, rows },
         validateStatus: validStatus,
-        transformResponse: setupTransformer(['size_on_disk'])
+        transformResponse: setupTransformer(reportNumericKeys)
       })
       .then(handleResponse)
       .then(result => ReportsTableData.parse(result));

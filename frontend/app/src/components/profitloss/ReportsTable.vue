@@ -20,10 +20,10 @@
             <date-display :timestamp="item.created" />
           </template>
           <template #item.start="{ item }">
-            <date-display :timestamp="item.start" />
+            <date-display :timestamp="item.startTs" />
           </template>
           <template #item.end="{ item }">
-            <date-display :timestamp="item.end" />
+            <date-display :timestamp="item.endTs" />
           </template>
           <template #item.sizeOnDisk="{ item }">
             {{ item.sizeOnDisk }}
