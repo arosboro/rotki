@@ -24,6 +24,12 @@ export interface ReportState {
   reportPeriod: ReportPeriod;
   currency: string;
   loaded: boolean;
+  identifier: number;
+  name: string;
+  created: number;
+  startTs: number;
+  endTs: number;
+  sizeOnDisk: NumericString;
   progress: ReportProgress;
   reportError: ReportError;
 }
@@ -38,6 +44,11 @@ export const defaultState = (): ReportState => ({
   reportPeriod: emptyPeriod(),
   currency: currencies[0].tickerSymbol,
   loaded: false,
+  identifier: -1,
+  created: -1,
+  startTs: -1,
+  endTs: -1,
+  sizeOnDisk: -1,
   progress: {
     processingState: '',
     totalProgress: ''

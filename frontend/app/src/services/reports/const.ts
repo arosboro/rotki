@@ -1,1 +1,1 @@
-export const reportNumericKeys = [];
+export const reportNumericKeys = ['size_on_disk'];

@@ -1,51 +1,36 @@
 <template>
   <v-card>
-    <i18n tag="div" path="profit_loss_reports.title" class="text-h5 mt-6">
-      <v-card-text>
-        <v-sheet outlined rounded>
-          <data-table
-            show-expand
-            single-expand
-            sort-by="created"
-            item-key="identifier"
-            :items="index.reports"
-            :headers="headers"
-          >
-            <!--            <template #header.selection>-->
-            <!--              <v-simple-checkbox-->
-            <!--                :ripple="false"-->
-            <!--                :value="allSelected"-->
-            <!--                color="primary"-->
-            <!--                @input="setSelected($report)"-->
-            <!--              />-->
-            <!--            </template>-->
-            <!--            <template #item.selection="{ item }">-->
-            <!--              <v-simple-checkbox-->
-            <!--                :ripple="false"-->
-            <!--                color="primary"-->
-            <!--                :value="selected.includes(item.identifier)"-->
-            <!--                @input="selectionChanged(item.identifier, $event)"-->
-            <!--              />-->
-            <!--            </template>-->
-            <template #item.name="{ item }">
-              {{ item.name }}
-            </template>
-            <template #item.created="{ item }">
-              <date-display :timestamp="item.created" />
-            </template>
-            <template #item.start="{ item }">
-              <date-display :timestamp="item.start" />
-            </template>
-            <template #item.end="{ item }">
-              <date-display :timestamp="item.end" />
-            </template>
-            <template #item.sizeOnDisk="{ item }">
-              {{ item.sizeOnDisk }}
-            </template>
-          </data-table>
-        </v-sheet>
-      </v-card-text>
-    </i18n>
+    <v-card-title>
+      <card-title> {{ $t('profit_loss_reports.title') }}</card-title>
+    </v-card-title>
+    <v-card-text>
+      <v-sheet outlined rounded>
+        <data-table
+          show-expand
+          single-expand
+          sort-by="created"
+          item-key="identifier"
+          :items="index.reports"
+          :headers="headers"
+        >
+          <template #item.name="{ item }">
+            {{ item.name }}
+          </template>
+          <template #item.created="{ item }">
+            <date-display :timestamp="item.created" />
+          </template>
+          <template #item.start="{ item }">
+            <date-display :timestamp="item.start" />
+          </template>
+          <template #item.end="{ item }">
+            <date-display :timestamp="item.end" />
+          </template>
+          <template #item.sizeOnDisk="{ item }">
+            {{ item.sizeOnDisk }}
+          </template>
+        </data-table>
+      </v-sheet>
+    </v-card-text>
   </v-card>
 </template>
 
@@ -54,10 +39,16 @@ import { ReportCache } from '@rotki/common/lib/reports';
 import { Component, Mixins } from 'vue-property-decorator';
 import { DataTableHeader } from 'vuetify';
 import { mapActions, mapGetters, mapState } from 'vuex';
+import DataTable from '@/components/helper/DataTable.vue';
+import CardTitle from '@/components/typography/CardTitle.vue';
 import StatusMixin from '@/mixins/status-mixin';
 import { ReportActions } from '@/store/reports/const';
 
 @Component({
+  components: {
+    DataTable,
+    CardTitle
+  },
   computed: {
     ...mapGetters('reports', ['reports']),
     ...mapState('reports', ['index'])

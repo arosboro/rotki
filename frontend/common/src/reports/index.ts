@@ -1,14 +1,14 @@
 import { z } from "zod";
 import {NumericString, PagedResource} from "../index";
 
-const ReportPeriod = z.object({
+export const ReportPeriod = z.object({
   start: z.number(),
   end: z.number(),
 })
 
 export type ReportPeriod = z.infer<typeof ReportPeriod>
 
-const ProfitLossOverviewData = z.object({
+export const ProfitLossOverviewData = z.object({
   loanProfit: NumericString,
   defiProfitLoss: NumericString,
   marginPositionsProfitLoss: NumericString,
@@ -24,14 +24,14 @@ const ProfitLossOverviewData = z.object({
 
 export type ProfitLossOverviewData = z.infer<typeof ProfitLossOverviewData>
 
-const CostBasis = z.object({
+export const CostBasis = z.object({
   isComplete: z.boolean(),
   matchedAcquisitions: z.boolean(),
 })
 
 export type CostBasis = z.infer<typeof CostBasis>
 
-const ProfitLossEvent = z.object({
+export const ProfitLossEvent = z.object({
   location: z.string(),
   type: z.string(),
   paidInProfitCurrency: NumericString,
@@ -49,7 +49,7 @@ const ProfitLossEvent = z.object({
 
 export type ProfitLossEvent = z.infer<typeof ProfitLossEvent>
 
-const ReportCacheData = z.object({
+export const ReportCacheData = z.object({
   overview: ProfitLossOverviewData,
   events: z.array(ProfitLossEvent),
   processed: z.number(),
@@ -60,26 +60,26 @@ const ReportCacheData = z.object({
 
 export type ReportData = z.infer<typeof ReportCacheData>
 
-const ReportCache = z.object({
+export const ReportCache = z.object({
   identifier: z.number(),
   name: z.string(),
-  created: z.number(),
-  start: z.number(),
-  end: z.number(),
-  sizeOnDisk: NumericString,
+  created: z.union([z.number(), z.null()]),
+  startTs: z.number(),
+  endTs: z.number(),
+  sizeOnDisk: z.union([NumericString, z.null()])
 })
 
 export type ReportCache = z.infer<typeof ReportCache>
 
-const Report = ReportCache.extend(ReportCacheData.shape)
+export const Report = ReportCache.extend(ReportCacheData.shape)
 
 export type Report = z.infer<typeof Report>
 
-const PagedReport = PagedResource.extend(Report.shape)
+export const PagedReport = PagedResource.extend(Report.shape)
 
 export type PagedReport = z.infer<typeof PagedReport>
 
-const TradeHistory = z.object({
+export const TradeHistory = z.object({
   eventsProcessed: z.number(),
   eventsLimit: z.number(),
   firstProcessedTimestamp: z.number(),
@@ -89,7 +89,7 @@ const TradeHistory = z.object({
 
 export type TradeHistory = z.infer<typeof TradeHistory>
 
-const MatchedAcquisition = z.object({
+export const MatchedAcquisition = z.object({
   time: z.number(),
   description: z.string(),
   location: z.string(),
@@ -101,22 +101,37 @@ const MatchedAcquisition = z.object({
 
 export type MatchedAcquisition = z.infer<typeof MatchedAcquisition>
 
-const ReportProgress = z.object({
+export const ReportProgress = z.object({
   processingState: z.string(),
   totalProgress: z.string()
 })
 
 export type ReportProgress = z.infer<typeof ReportProgress>
 
-const ReportError = z.object({
+export const ReportError = z.object({
   error: z.string(),
   message: z.string(),
 })
 
 export type ReportError = z.infer<typeof ReportError>
 
-const ReportsTableData = PagedResource.extend({
+export const ReportsTableData = PagedResource.extend({
     reports: z.array(ReportCache),
-})
+}).transform(arg => {
+  const reports: {
+    page?: number;
+    pages?: number;
+    rows?: number;
+    records?: number;
+    reports?: ReportCache[]
+  } = {
+    page: arg.page,
+    pages: arg.pages,
+    rows: arg.rows,
+    records: arg.records,
+    reports: arg.reports
+  };
+  return reports;
+});
 
 export type ReportsTableData = z.infer<typeof ReportsTableData>

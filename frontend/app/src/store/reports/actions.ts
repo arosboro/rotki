@@ -121,7 +121,7 @@ export const actions: ActionTree<ReportState, RotkehlchenState> = {
     } as ReportProgress);
   },
 
-  async [ReportActions.FETCH_REPORTS]({ state, commit }) {
+  async [ReportActions.FETCH_REPORTS]({ commit, state }) {
     const notify = async (error?: any) => {
       logger.error(error);
       const message = error?.message ?? error ?? '';
