@@ -1,5 +1,6 @@
 import logging
 import pickle
+from math import ceil
 from typing import TYPE_CHECKING, Dict, List, Any
 
 from rotkehlchen.errors import DeserializationError
@@ -93,7 +94,7 @@ class DBTaxableEvents():
 
         result_dict = {
             "page": page,
-            "pages": round(records / rows_per_page) if rows_per_page else rows_per_page,
+            "pages": ceil(records / rows_per_page) if rows_per_page else rows_per_page,
             "rows": rows_per_page,
             "records": records,
             "reports": reports,

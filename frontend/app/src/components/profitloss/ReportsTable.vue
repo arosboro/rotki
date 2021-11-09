@@ -6,12 +6,14 @@
     <v-card-text>
       <v-sheet outlined rounded>
         <data-table
+          :headers="headers"
+          :items="index.reports"
           show-expand
           single-expand
           sort-by="created"
           item-key="identifier"
-          :items="index.reports"
-          :headers="headers"
+          :page.sync="index.page"
+          :items-per-page.sync="index.rows"
         >
           <template #item.name="{ item }">
             {{ item.name }}
