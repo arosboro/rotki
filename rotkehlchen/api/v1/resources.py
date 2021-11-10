@@ -94,14 +94,15 @@ from rotkehlchen.api.v1.encoding import (
     WatchersDeleteSchema,
     WatchersEditSchema,
     XpubAddSchema,
-    XpubPatchSchema, HistoryReportingSchema,
+    XpubPatchSchema,
+    ReportsQuerySchema,
 )
 from rotkehlchen.api.v1.parser import ignore_kwarg_parser, resource_parser
 from rotkehlchen.assets.asset import Asset, EthereumToken
 from rotkehlchen.assets.typing import AssetType
 from rotkehlchen.balances.manual import ManuallyTrackedBalance
 from rotkehlchen.chain.bitcoin.xpub import XpubData
-from rotkehlchen.db.filtering import ETHTransactionsFilterQuery
+from rotkehlchen.db.filtering import ETHTransactionsFilterQuery, ReportsFilterQuery
 from rotkehlchen.db.settings import ModifiableDBSettings
 from rotkehlchen.history.typing import HistoricalPriceOracle
 from rotkehlchen.typing import (
@@ -956,18 +957,34 @@ class HistoryProcessingResource(BaseResource):
 
 class HistoryReportsResource(BaseResource):
 
-    get_schema = HistoryReportingSchema()
+    get_schema = ReportsQuerySchema()
 
-    @use_kwargs(get_schema, location='json_and_query')
-    def get(self,
-            report_id: int,
-            page: int,
-            rows: int,
-            ) -> Response:
-        return self.rest_api.get_history_reports(
-            page=page,
-            rows=rows,
+    # @use_kwargs(get_schema, location='json_and_query')
+    # def get(self,
+    #         report_id: int,
+    #         page: int,
+    #         rows: int,
+    #         ) -> Response:
+    #     return self.rest_api.get_history_reports(
+    #         page=page,
+    #         rows=rows,
+    #     )
+
+    @ignore_kwarg_parser.use_kwargs(get_schema, location='json_and_query_and_view_args')
+    def get(
+            self,
+            async_query: bool,
+            only_cache: bool,
+            filter_query: ReportsFilterQuery,
+    ) -> Response:
+        return self.rest_api.get_reports(
+            async_query=async_query,
+            only_cache=only_cache,
+            filter_query=filter_query,
         )
+
+    def delete(self) -> Response:
+        return self.rest_api.purge_ethereum_transaction_data()
 
 
 class HistoryExportingResource(BaseResource):

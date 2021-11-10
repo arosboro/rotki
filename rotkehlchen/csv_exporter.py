@@ -149,9 +149,6 @@ class CSVExporter():
     def add_report(self, start_ts: Timestamp, end_ts: Timestamp) -> None:
         self.report_id = self.cache.add_report(start_ts, end_ts)
 
-    def get_events(self, page: int, rows: int) -> List[Dict[str, Any]]:
-        return self.cache.get_events(self.report_id, page=page, rows_per_page=rows)
-
     def timestamp_to_date(self, timestamp: Timestamp) -> str:
         return timestamp_to_date(
             timestamp,

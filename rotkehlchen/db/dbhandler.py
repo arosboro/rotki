@@ -139,6 +139,7 @@ DBTupleType = Literal[
     'margin_position',
     'ethereum_transaction',
     'amm_swap',
+    'pnl_event',
 ]
 
 # Tuples that contain first the name of a table and then the columns that
@@ -1361,6 +1362,7 @@ class DBHandler:
         - aave_events_{address}
         - yearn_vaults_events_{address}
         - yearn_vaults_v2_events_{address}
+        - pnl_reports_{identifier}
         """
         cursor = self.conn.cursor()
         query = cursor.execute(
@@ -2359,12 +2361,15 @@ class DBHandler:
                 'ethereum_transactions',
                 'amm_swaps',
                 'ledger_actions',
+                'pnl_reports',
+                'pnl_events',
             ],
+            conn_attribute: Literal['conn', 'conn_transient'] = 'conn',
             op: Literal['OR', 'AND'] = 'OR',
             **kwargs: Any,
     ) -> int:
         """Returns how many of a certain type of entry are saved in the DB"""
-        cursor = self.conn.cursor()
+        cursor = getattr(self, conn_attribute).cursor()
         cursorstr = f'SELECT COUNT(*) from {entries_table}'
         if len(kwargs) != 0:
             cursorstr += ' WHERE'

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import {NumericString, PagedResource} from "../index";
+import {NumericString, PagedResourceParameters} from "../index";
 
 export const ReportPeriod = z.object({
   start: z.number(),
@@ -75,7 +75,7 @@ export const Report = ReportCache.extend(ReportCacheData.shape)
 
 export type Report = z.infer<typeof Report>
 
-export const PagedReport = PagedResource.extend(Report.shape)
+export const PagedReport = PagedResourceParameters.extend(Report.shape)
 
 export type PagedReport = z.infer<typeof PagedReport>
 
@@ -115,21 +115,16 @@ export const ReportError = z.object({
 
 export type ReportError = z.infer<typeof ReportError>
 
-export const ReportsTableData = PagedResource.extend({
-    reports: z.array(ReportCache),
+export const ReportsTableData = PagedResourceParameters.extend({
+    entries_found: z.number(),
+    entries: z.array(ReportCache),
 }).transform(arg => {
   const reports: {
-    page?: number;
-    pages?: number;
-    rows?: number;
-    records?: number;
-    reports?: ReportCache[]
+    entriesFound?: number;
+    entries?: ReportCache[]
   } = {
-    page: arg.page,
-    pages: arg.pages,
-    rows: arg.rows,
-    records: arg.records,
-    reports: arg.reports
+    entriesFound: arg.entries_found,
+    entries: arg.entries
   };
   return reports;
 });

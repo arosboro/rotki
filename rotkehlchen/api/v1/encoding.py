@@ -45,7 +45,7 @@ from rotkehlchen.chain.substrate.utils import (
     is_valid_polkadot_address,
 )
 from rotkehlchen.constants.misc import ZERO
-from rotkehlchen.db.filtering import ETHTransactionsFilterQuery
+from rotkehlchen.db.filtering import ETHTransactionsFilterQuery, ReportsFilterQuery
 from rotkehlchen.db.settings import ModifiableDBSettings
 from rotkehlchen.errors import (
     DeserializationError,
@@ -1373,10 +1373,37 @@ class HistoryProcessingSchema(Schema):
     async_query = fields.Boolean(load_default=False)
 
 
-class HistoryReportingSchema(Schema):
-    report_id = fields.Integer(load_default=0)
-    page = fields.Integer(load_defualt=0)
-    rows = fields.Integer(load_default=10)
+class ReportsQuerySchema(
+        AsyncQueryArgumentSchema,
+        OnlyCacheQuerySchema,
+        DBPaginationSchema,
+        DBOrderBySchema):
+    report_id = fields.Integer(load_default=None)
+    from_timestamp = TimestampField(load_default=Timestamp(0))
+    to_timestamp = TimestampField(load_default=ts_now)
+
+    @post_load
+    def make_reports_query(  # pylint: disable=no-self-use
+        self,
+        data: Dict[str, Any],
+        **_kwargs: Any,
+    ) -> Dict[str, Any]:
+        report_id = data.get('report_id')
+        filter_query = ReportsFilterQuery.make(
+            order_by_attribute='timestamp',  # hard coding order by timestamp for API for now
+            order_ascending=False,  # most recent first
+            limit=data['limit'],
+            offset=data['offset'],
+            report_id=report_id if report_id is not None else None,
+            from_ts=data['from_timestamp'],
+            to_ts=data['to_timestamp'],
+        )
+
+        return {
+            'async_query': data['async_query'],
+            'only_cache': data['only_cache'],
+            'filter_query': filter_query,
+        }
 
 
 class HistoryExportingSchema(Schema):

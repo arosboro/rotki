@@ -292,8 +292,6 @@ class Accountant():
     def process_history(
             self,
             report_id: int,
-            page: int,
-            rows: int,
             start_ts: Timestamp,
             end_ts: Timestamp,
             trade_history: List[Union[Trade, MarginPosition, AMMTrade]],
@@ -474,8 +472,8 @@ class Accountant():
             'first_processed_timestamp': self.first_processed_timestamp,
             'events_processed': count,
             'events_limit': events_limit,
-            'all_events': self.csvexporter.get_events(page, rows),
-        }
+            'all_events': self.csvexporter.all_events,
+        }  # TODO read this return statement from cache
 
     @staticmethod
     def _should_ignore_action(

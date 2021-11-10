@@ -93,6 +93,26 @@ class DBETHTransactionHashFilter(DBFilter):
 
 
 @dataclass(init=True, repr=True, eq=True, order=False, unsafe_hash=False, frozen=False)
+class DBReportsReportIDFilter(DBFilter):
+    report_id: Optional[Union[str, int]] = None
+
+    def prepare(self) -> Tuple[List[str], List[Any]]:
+        if self.report_id is None:
+            return [], []
+
+        if isinstance(self.report_id, str):
+            try:
+                value = int(self.report_id)
+            except DeserializationError as e:
+                log.error(f'Failed to filter a DB transaction query by report_id: {str(e)}')
+                return [], []
+        else:
+            value = self.report_id
+
+        return ['report_id=?'], [value]
+
+
+@dataclass(init=True, repr=True, eq=True, order=False, unsafe_hash=False, frozen=False)
 class DBFilterQuery():
     and_op: bool
     filters: List[DBFilter]
@@ -238,3 +258,73 @@ class ETHTransactionsFilterQuery(DBFilterQuery):
             )
         filter_query.filters = filters
         return cast('ETHTransactionsFilterQuery', filter_query)
+
+
+@dataclass(init=True, repr=True, eq=True, order=False, unsafe_hash=False, frozen=False)
+class ReportsFilterQuery(DBFilterQuery):
+
+    @property
+    def report_id_filter(self) -> DBReportsReportIDFilter:
+        if len(self.filters) >= 2 and isinstance(self.filters[1], DBReportsReportIDFilter):
+            return self.filters[1]
+        return DBReportsReportIDFilter(and_op=True)
+
+    @property
+    def timestamp_filter(self) -> DBTimestampFilter:
+        if len(self.filters) >= 2 and isinstance(self.filters[1], DBTimestampFilter):
+            return self.filters[1]
+        if len(self.filters) >= 2 and isinstance(self.filters[2], DBTimestampFilter):
+            return self.filters[2]  # There is also a DBReportsReportIDFilter first
+        return DBTimestampFilter(and_op=True)  # no range specified
+
+    @property
+    def report_id(self) -> Optional[Union[str, int]]:
+        return self.report_id_filter.report_id
+
+    @property
+    def from_ts(self) -> Optional[Timestamp]:
+        return self.timestamp_filter.from_ts
+
+    @from_ts.setter
+    def from_ts(self, from_ts: Optional[Timestamp]) -> None:
+        self.timestamp_filter.from_ts = from_ts
+
+    @property
+    def to_ts(self) -> Optional[Timestamp]:
+        return self.timestamp_filter.to_ts
+
+    @to_ts.setter
+    def to_ts(self, to_ts: Optional[Timestamp]) -> None:
+        self.timestamp_filter.to_ts = to_ts
+
+    @classmethod
+    def make(
+            cls,
+            and_op: bool = True,
+            order_by_attribute: str = 'timestamp',
+            order_ascending: bool = True,
+            limit: Optional[int] = None,
+            offset: Optional[int] = None,
+            from_ts: Optional[Timestamp] = None,
+            to_ts: Optional[Timestamp] = None,
+            report_id: Optional[Union[str, int]] = None,
+    ) -> 'ReportsFilterQuery':
+        filter_query = cls.create(
+            and_op=and_op,
+            limit=limit,
+            offset=offset,
+            order_by_attribute=order_by_attribute,
+            order_ascending=order_ascending,
+        )
+        filters: List[DBFilter] = []
+        if report_id:  # report_id means single result so make it as single filter
+            filters.append(DBReportsReportIDFilter(and_op=False, report_id=report_id))
+        filters.append(
+            DBTimestampFilter(
+                and_op=True,
+                from_ts=from_ts,
+                to_ts=to_ts,
+            ),
+        )
+        filter_query.filters = filters
+        return cast('ReportsFilterQuery', filter_query)

@@ -181,8 +181,6 @@ prices = {
 
 def check_result_of_history_creation_for_remote_errors(
         report_id: int,  # pylint: disable=unused-argument
-        page: int,  # pylint: disable=unused-argument
-        rows: int,  # pylint: disable=unused-argument
         start_ts: Timestamp,  # pylint: disable=unused-argument
         end_ts: Timestamp,  # pylint: disable=unused-argument
         trade_history: List[Union[Trade, MarginPosition, AMMTrade]],
@@ -689,8 +687,6 @@ def mock_history_processing(
         should_mock_history_processing: bool = True,
         remote_errors: bool = False,
         history_report_id: Optional[int] = None,
-        history_page: Optional[int] = None,
-        history_rows: Optional[int] = None,
         history_start_ts: Optional[Timestamp] = None,
         history_end_ts: Optional[Timestamp] = None,
 ):
@@ -703,8 +699,6 @@ def mock_history_processing(
 
     def check_result_of_history_creation(
             report_id: int,
-            page: int,
-            rows: int,
             start_ts: Timestamp,
             end_ts: Timestamp,
             trade_history: List[Union[Trade, MarginPosition, AMMTrade]],
@@ -721,14 +715,6 @@ def mock_history_processing(
             assert report_id == 0, 'if no report_id is given it should be zero'
         else:
             assert report_id == history_report_id, 'should be same as given to process_history'
-        if history_page is None:
-            assert page == 0, 'if no page is given it should be zero'
-        else:
-            assert page == history_page, 'should be same as given to process_history'
-        if history_rows is None:
-            assert rows == 10, 'if no rows are given it should default to 10'
-        else:
-            assert rows == history_rows, 'should be same as given to process_history'
         if history_start_ts is None:
             assert start_ts == 0, 'if no start_ts is given it should be zero'
         else:
@@ -872,8 +858,6 @@ def mock_history_processing(
 
     def check_result_of_history_creation_and_process_it(
             report_id: int,
-            page: int,
-            rows: int,
             start_ts: Timestamp,
             end_ts: Timestamp,
             trade_history: List[Union[Trade, MarginPosition, AMMTrade]],
@@ -886,8 +870,6 @@ def mock_history_processing(
         """Checks results of history creation but also proceeds to normal history processing"""
         check_result_of_history_creation(
             report_id=report_id,
-            page=page,
-            rows=rows,
             start_ts=start_ts,
             end_ts=end_ts,
             trade_history=trade_history,
@@ -899,8 +881,6 @@ def mock_history_processing(
         )
         return original_history_processing_function(
             report_id=report_id,
-            page=page,
-            rows=rows,
             start_ts=start_ts,
             end_ts=end_ts,
             trade_history=trade_history,

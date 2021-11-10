@@ -33,3 +33,10 @@ export interface HasBalance {
 }
 
 export { BigNumber as BigNumber }
+
+export const PagedResourceParameters = z.object({
+  limit: z.number(),
+  offset: z.number(),
+  orderByAttribute: z.string(),
+  ascending: z.boolean()
+})

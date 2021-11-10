@@ -15,8 +15,6 @@ from rotkehlchen.typing import Timestamp
 def accounting_history_process(
         accountant,
         report_id,
-        page,
-        rows,
         start_ts: Timestamp,
         end_ts: Timestamp,
         history_list: List[Dict],
@@ -68,8 +66,6 @@ def accounting_history_process(
 
     result = accountant.process_history(
         report_id=report_id,
-        page=page,
-        rows=rows,
         start_ts=start_ts,
         end_ts=end_ts,
         trade_history=trade_history,

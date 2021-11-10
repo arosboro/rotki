@@ -1,13 +1,19 @@
 import logging
 import pickle
-from math import ceil
-from typing import TYPE_CHECKING, Dict, List, Any
+from pysqlcipher3 import dbapi2 as sqlcipher
+from typing import TYPE_CHECKING, Dict, List, Any, Tuple, Optional
 
+from rotkehlchen.accounting.accountant import FREE_PNL_EVENTS_LIMIT
+from rotkehlchen.db.filtering import ReportsFilterQuery
+from rotkehlchen.db.ranges import DBQueryRanges
 from rotkehlchen.errors import DeserializationError
 from rotkehlchen.logging import RotkehlchenLogsAdapter
 from rotkehlchen.typing import Timestamp
 from rotkehlchen.user_messages import MessagesAggregator
 from rotkehlchen.utils.misc import ts_now
+from rotkehlchen.utils.mixins.lockable import LockableQueryMixIn, protect_with_lock
+
+FREE_REPORTS_LOOKUP_LIMIT = 20
 
 logger = logging.getLogger(__name__)
 log = RotkehlchenLogsAdapter(logger)
@@ -46,37 +52,134 @@ def deserialize_event_from_db(result: bytes) -> Dict[str, Any]:
     return pickle.loads(result)
 
 
-class DBTaxableEvents():
+class DBTaxableEvents(LockableQueryMixIn):
 
-    def __init__(self, database: 'DBHandler', msg_aggregator: MessagesAggregator):
+    def __init__(self,
+                 database: 'DBHandler',
+                 msg_aggregator: MessagesAggregator):
+        super().__init__()
         self.db = database
         self.msg_aggregator = msg_aggregator
 
-    def get_reports_info(self):
-        cursor = self.db.conn_transient.cursor()
-        query = """SELECT COUNT(identifier) FROM pnl_reports"""
-        results = cursor.execute(query)
-        for result in results:
-            log.debug(f"get_reports_info: {result}")
-            return result[0]
+    def _return_reports_or_events_maybe_limit(
+            self,
+            entry_type: str,
+            entries: List[Dict[str, Any]],
+            with_limit: bool,
+    ) -> List[Dict[str, Any]]:
+        if with_limit is False:
+            return entries
+
+        if entry_type == 'events':
+            limit = FREE_PNL_EVENTS_LIMIT
+        else:
+            limit = FREE_REPORTS_LOOKUP_LIMIT
+
+        count: int = 0
+        for _ in entries:
+            count += 1
+
+        returning_entries_length = min(limit, len(entries))
+
+        return entries[:returning_entries_length]
+
+    def single_report_query_events(
+            self,
+            report_id: int,
+            start_ts: Timestamp,
+            end_ts: Timestamp,
+    ) -> Tuple[List[Dict[str, Any]], Optional[Timestamp], Optional[Timestamp]]:
+        """Only queries cached events and prepares them for the response"""
+        ranges = DBQueryRanges(self.db)
+        ranges_to_query = ranges.get_location_query_ranges(
+            location_string=f'pnl_events_{report_id}',
+            start_ts=start_ts,
+            end_ts=end_ts,
+        )
+        cache_data = []
+        query_start_ts = None
+        query_end_ts = None
+        for query_start_ts, query_end_ts in ranges_to_query:
+            try:
+                cache_data = self.get_all_events(report_id)  # TODO: Change to get events
+
+            except sqlcipher.DatabaseError as e:  # pylint: disable=no-member
+                self.msg_aggregator.add_error(
+                    f'Got error "{str(e)}" while querying the reports cache '
+                    f'from rotki. Events not added to the DB '
+                    f'from_ts: {query_start_ts} '
+                    f'to_ts: {query_end_ts} ',
+                )
+
+        # and also set the last queried timestamps for the report
+        ranges.update_used_query_range(
+            location_string=f'pnl_events_{report_id}',
+            start_ts=start_ts,
+            end_ts=end_ts,
+            ranges_to_query=ranges_to_query,
+        )
+
+        return cache_data, query_start_ts, query_end_ts
+
+    @protect_with_lock()
+    def query(
+            self,
+            filter_query: ReportsFilterQuery,
+            with_limit: bool = False,
+            only_cache: bool = False,
+    ) -> List[Dict[str, Any]]:
+        """Queries for all reports/events of a Profit and Loss Report which has been performed
+        historically. Returns a list of all transactions filtered and sorted according to the
+        parameters.
+
+        If `with_limit` is true then the api limit is applied
+
+        if `recent_first` is true then the transactions are returned with the most
+        recent first on the list
+
+        May raise:
+        - TODO check what it may raise
+        """
+        report_id = filter_query.report_id or None
+
+        if only_cache is False:
+            # f_from_ts = filter_query.from_ts
+            # f_to_ts = filter_query.to_ts
+            # from_ts = Timestamp(0) if f_from_ts is None else f_from_ts
+            # to_ts = ts_now() if f_to_ts is None else f_to_ts
+            if report_id is not None:
+                # TODO: only_cache was False, we need to hand off
+                #  what we have and generate the rest
+                pass
+
+        if report_id is None:
+            entries = self.get_reports(filter_=filter_query)
+        else:
+            report = self.get_reports(filter_=filter_query)[0]
+            entries = self.get_events(filter_=filter_query)
+        entry_type = 'reports' if report_id is None else 'events'
+        if entry_type == 'reports':
+            return self._return_reports_or_events_maybe_limit(
+                entry_type=entry_type,
+                entries=entries,
+                with_limit=with_limit,
+            )
+        else:
+            events = self._return_reports_or_events_maybe_limit(
+                entry_type=entry_type,
+                entries=entries,
+                with_limit=with_limit,
+            )
+            report['events'] = events
+            return [report]
 
     def get_reports(self,
-                    page: int = 1,
-                    rows_per_page: int = 10) -> List[Dict[str, Any]]:
+                    filter_: ReportsFilterQuery,
+                    ) -> List[Dict[str, Any]]:
         cursor = self.db.conn_transient.cursor()
-        offset = (page - 1) * rows_per_page
-        records = self.get_reports_info()
-        query = """
-        SELECT
-            identifier,
-            name,
-            created,
-            start_ts,
-            end_ts,
-            size_on_disk
-        FROM pnl_reports
-        LIMIT ? OFFSET ?"""
-        results = cursor.execute(query, (rows_per_page, offset))
+        query, bindings = filter_.prepare()
+        query = 'SELECT * FROM pnl_reports ' + query
+        results = cursor.execute(query, bindings)
 
         reports = []
         for result in results:
@@ -92,15 +195,49 @@ class DBTaxableEvents():
 
             reports.append(report)
 
-        result_dict = {
-            "page": page,
-            "pages": ceil(records / rows_per_page) if rows_per_page else rows_per_page,
-            "rows": rows_per_page,
-            "records": records,
-            "reports": reports,
-        }
+        return reports
 
-        return result_dict
+    def get_report(self, filter_: ReportsFilterQuery) -> Optional[Dict[str, Any]]:
+        cursor = self.db.conn_transient.cursor()
+        query, bindings = filter_.prepare()
+        query = 'SELECT * FROM pnl_reports ' + query
+        results = cursor.execute(query, bindings)
+        result = results.fetchone()
+        if result is None:
+            return None
+
+        try:
+            report = deserialize_report_from_db(result)
+        except DeserializationError as e:
+            self.msg_aggregator.add_error(
+                f'Error deserializing PnL Report from the DB. Skipping it.'
+                f'Error was: {str(e)}',
+            )
+            pass
+
+        return report
+
+    def get_events(self, filter_: ReportsFilterQuery) -> List[Dict[str, Any]]:
+        cursor = self.db.conn_transient.cursor()
+        query, bindings = filter_.prepare()
+        query = 'SELECT * FROM pnl_events ' + query
+        results = cursor.execute(query, bindings)
+
+        events = []
+        for result in results:
+            log.debug(f"get_events result: {result}")
+            try:
+                event = deserialize_event_from_db(result[0])
+            except DeserializationError as e:
+                self.msg_aggregator.add_error(
+                    f'Error deserializing PnL Event for Report from the DB. Skipping it.'
+                    f'Error was: {str(e)}',
+                )
+                continue
+
+            events.append(event)
+
+        return events
 
     def add_report(self, start_ts: Timestamp, end_ts: Timestamp) -> int:
         cursor = self.db.conn_transient.cursor()
@@ -130,35 +267,59 @@ class DBTaxableEvents():
         cursor.execute(query, (report_id, time, serialize_event_to_db(event)))
         self.db.conn_transient.commit()
 
-    def get_events(self,
-                   report_id: int,
-                   page: int = 1,
-                   rows_per_page: int = 10) -> List[Dict[str, Any]]:
-        cursor = self.db.conn_transient.cursor()
-        offset = page * rows_per_page
+    def add_events(self, report_id: int, events: List[Dict[str, Any]]) -> None:
+        """Adds taxable events to the database"""
+        event_tuples: List[Tuple[Any, ...]] = []
+        for event in events:
+            event_tuples.append((
+                report_id,
+                event['time'],
+                serialize_event_to_db(event),
+            ))
+
         query = """
-        SELECT data from pnl_events
-        WHERE report_id = ?
-        ORDER BY timestamp asc
-        LIMIT ? OFFSET ?;"""
-        results = cursor.execute(query, (report_id, rows_per_page, offset))
+            INSERT INTO pnl_events(
+              report_id,
+              timestamp,
+              event
+            )
+            VALUES (?, ?, ?)
+        """
+        self.db.write_tuples(
+            tuple_type='pnl_event',
+            query=query,
+            tuples=event_tuples,
+        )
 
-        events = []
-        for result in results:
-            log.debug(f"get_events result: {result}")
-            try:
-                event = deserialize_event_from_db(result[0])
-            except DeserializationError as e:
-                self.msg_aggregator.add_error(
-                    f'Error deserializing PnL Event for Report from the DB. Skipping it.'
-                    f'Error was: {str(e)}',
-                )
-                continue
-
-            events.append(event)
-
-        return events
-
+    # def get_events(self,
+    #                report_id: int,
+    #                from_ts: int,
+    #                to_ts: int) -> List[Dict[str, Any]]:
+    #     cursor = self.db.conn_transient.cursor()
+    #     offset = page * rows_per_page
+    #     query = """
+    #     SELECT data from pnl_events
+    #     WHERE report_id = ?
+    #     ORDER BY timestamp asc
+    #     LIMIT ? OFFSET ?;"""
+    #     results = cursor.execute(query, (report_id, rows_per_page, offset))
+    #
+    #     events = []
+    #     for result in results:
+    #         log.debug(f"get_events result: {result}")
+    #         try:
+    #             event = deserialize_event_from_db(result[0])
+    #         except DeserializationError as e:
+    #             self.msg_aggregator.add_error(
+    #                 f'Error deserializing PnL Event for Report from the DB. Skipping it.'
+    #                 f'Error was: {str(e)}',
+    #             )
+    #             continue
+    #
+    #         events.append(event)
+    #
+    #     return events
+    #
     def get_all_events(self, report_id: int) -> List[Dict[str, Any]]:
         cursor = self.db.conn_transient.cursor()
         query = """

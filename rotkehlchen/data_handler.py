@@ -15,6 +15,7 @@ from rotkehlchen.db.taxable_events import DBTaxableEvents
 from rotkehlchen.db.settings import ModifiableDBSettings
 from rotkehlchen.errors import AuthenticationError, SystemPermissionError
 from rotkehlchen.logging import RotkehlchenLogsAdapter
+from rotkehlchen.premium.premium import Premium
 from rotkehlchen.typing import B64EncodedBytes, B64EncodedString, Timestamp
 from rotkehlchen.user_messages import MessagesAggregator
 from rotkehlchen.utils.misc import timestamp_to_date, ts_now
@@ -25,13 +26,17 @@ log = RotkehlchenLogsAdapter(logger)
 
 class DataHandler():
 
-    def __init__(self, data_directory: Path, msg_aggregator: MessagesAggregator):
+    def __init__(self,
+                 data_directory: Path,
+                 msg_aggregator: MessagesAggregator,
+                 premium: Optional[Premium]):
 
         self.logged_in = False
         self.data_directory = data_directory
         self.username = 'no_user'
         self.password = ''
         self.msg_aggregator = msg_aggregator
+        self.premium = premium
 
     def logout(self) -> None:
         if self.logged_in:
@@ -116,7 +121,7 @@ class DataHandler():
         )
         self.cache: DBTaxableEvents = DBTaxableEvents(
             database=self.db,
-            msg_aggregator=self.msg_aggregator,
+            msg_aggregator=self.msg_aggregator
         )
         self.user_data_dir = user_data_dir
         self.logged_in = True

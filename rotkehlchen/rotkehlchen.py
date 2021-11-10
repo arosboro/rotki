@@ -55,7 +55,7 @@ from rotkehlchen.fval import FVal
 from rotkehlchen.globaldb import GlobalDBHandler
 from rotkehlchen.globaldb.updates import AssetsUpdater
 from rotkehlchen.greenlets import GreenletManager
-from rotkehlchen.history.events import EventsHistorian
+from rotkehlchen.history.events import EventsHistorian, HistoryResult
 from rotkehlchen.history.price import PriceHistorian
 from rotkehlchen.history.typing import HistoricalPriceOracle
 from rotkehlchen.icons import IconManager
@@ -85,7 +85,6 @@ logger = logging.getLogger(__name__)
 log = RotkehlchenLogsAdapter(logger)
 
 MAIN_LOOP_SECS_DELAY = 10
-
 
 ICONS_BATCH_SIZE = 3
 ICONS_QUERY_SLEEP = 60
@@ -128,7 +127,7 @@ class Rotkehlchen():
         self.exchange_manager = ExchangeManager(msg_aggregator=self.msg_aggregator)
         # Initialize the GlobalDBHandler singleton. Has to be initialized BEFORE asset resolver
         GlobalDBHandler(data_dir=self.data_dir)
-        self.data = DataHandler(self.data_dir, self.msg_aggregator)
+        self.data = DataHandler(self.data_dir, self.msg_aggregator, self.premium)
         self.cryptocompare = Cryptocompare(data_directory=self.data_dir, database=None)
         self.coingecko = Coingecko()
         self.icon_manager = IconManager(data_dir=self.data_dir, coingecko=self.coingecko)
@@ -565,29 +564,79 @@ class Rotkehlchen():
     def process_history(
             self,
             report_id: int,
-            page: int,
-            rows: int,
             start_ts: Timestamp,
             end_ts: Timestamp,
     ) -> Tuple[Dict[str, Any], str]:
-        (
-            error_or_empty,
-            history,
-            loan_history,
-            asset_movements,
-            eth_transactions,
-            defi_events,
-            ledger_actions,
-        ) = self.events_historian.get_history(
-            report_id=report_id,
-            start_ts=start_ts,
-            end_ts=end_ts,
-            has_premium=self.premium is not None,
-        )
+        def process_cache(cache_data: List[Dict[str, Any]]) -> HistoryResult:
+            actions = [y for x in cache_data for y in x.values]
+
+            return (
+                error_or_empty,
+                list(filter(lambda x: type(x) in ['Trade',
+                                                  'MarginPosition',
+                                                  'AMMTrade'], actions)),
+                list(filter(lambda x: type(x) in ['Loan'], actions)),
+                list(filter(lambda x: type(x) in ['AssetMovement'], actions)),
+                list(filter(lambda x: type(x) in ['EthereumTransaction'],
+                            actions)),
+                list(filter(lambda x: type(x) in ['DefiEvent'], actions)),
+                list(filter(lambda x: type(x) in ['LedgerAction'], actions)))
+
+        if report_id:
+            (
+                data,
+                query_start_ts,
+                query_end_ts) = self.data.cache.single_report_query_events(
+                report_id=report_id,
+                start_ts=start_ts,
+                end_ts=end_ts)
+            (
+                error_or_empty,
+                history,
+                loan_history,
+                asset_movements,
+                eth_transactions,
+                defi_events,
+                ledger_actions,
+            ) = process_cache(data)
+            if query_start_ts and query_end_ts:
+                (
+                    error_or_empty,
+                    query_history,
+                    query_loan_history,
+                    query_asset_movements,
+                    query_eth_transactions,
+                    query_defi_events,
+                    query_ledger_actions,
+                ) = self.events_historian.get_history(  # get_history
+                    report_id=report_id,
+                    start_ts=query_start_ts,
+                    end_ts=query_end_ts,
+                    has_premium=self.premium is not None,
+                )
+                history.extend(query_history)
+                loan_history.extend(query_loan_history)
+                asset_movements.extend(query_asset_movements)
+                eth_transactions.extend(query_eth_transactions)
+                defi_events.extend(query_defi_events)
+                ledger_actions.extend(query_ledger_actions)
+        else:
+            (
+                error_or_empty,
+                history,
+                loan_history,
+                asset_movements,
+                eth_transactions,
+                defi_events,
+                ledger_actions,
+            ) = self.events_historian.get_history(  # get_history
+                report_id=report_id,
+                start_ts=start_ts,
+                end_ts=end_ts,
+                has_premium=self.premium is not None,
+            )
         result = self.accountant.process_history(
             report_id=report_id,
-            page=page,
-            rows=rows,
             start_ts=start_ts,
             end_ts=end_ts,
             trade_history=history,
@@ -729,7 +778,8 @@ class Rotkehlchen():
                 total_usd_per_location[location] += balance.usd_value
 
         net_usd = sum((balance.usd_value for _, balance in assets_total_balance.items()), ZERO)
-        liabilities_total_usd = sum((liability.usd_value for _, liability in liabilities.items()), ZERO)  # noqa: E501
+        liabilities_total_usd = sum((liability.usd_value for _, liability in liabilities.items()),
+                                    ZERO)  # noqa: E501
         net_usd -= liabilities_total_usd
 
         # Calculate location stats
@@ -875,8 +925,10 @@ class Rotkehlchen():
 
         if self.user_is_logged_in:
             result['last_balance_save'] = self.data.db.get_last_balance_save_time()
-            result['eth_node_connection'] = self.chain_manager.ethereum.web3_mapping.get(NodeName.OWN, None) is not None  # noqa : E501
-            result['last_data_upload_ts'] = Timestamp(self.premium_sync_manager.last_data_upload_ts)  # noqa : E501
+            result['eth_node_connection'] = self.chain_manager.ethereum.web3_mapping.get(
+                NodeName.OWN, None) is not None  # noqa : E501
+            result['last_data_upload_ts'] = Timestamp(
+                self.premium_sync_manager.last_data_upload_ts)  # noqa : E501
         return result
 
     def shutdown(self) -> None:

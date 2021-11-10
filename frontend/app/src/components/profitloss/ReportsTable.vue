@@ -37,64 +37,132 @@
 </template>
 
 <script lang="ts">
+import { PagedResourceParameters } from '@rotki/common';
 import { ReportCache } from '@rotki/common/lib/reports';
-import { Component, Mixins } from 'vue-property-decorator';
+import {
+  computed,
+  defineComponent,
+  onBeforeMount,
+  Ref,
+  ref
+} from '@vue/composition-api';
 import { DataTableHeader } from 'vuetify';
-import { mapActions, mapGetters, mapState } from 'vuex';
 import DataTable from '@/components/helper/DataTable.vue';
 import CardTitle from '@/components/typography/CardTitle.vue';
-import StatusMixin from '@/mixins/status-mixin';
+import { setupStatusChecking } from '@/composables/common';
+import i18n from '@/i18n';
+import { Section } from '@/store/const';
 import { ReportActions } from '@/store/reports/const';
+import { RotkehlchenState } from '@/store/types';
+import { useStore } from '@/store/utils';
 
-@Component({
+export default defineComponent({
+  name: 'ReportsTable',
   components: {
     DataTable,
     CardTitle
   },
-  computed: {
-    ...mapGetters('reports', ['reports']),
-    ...mapState('reports', ['index'])
-  },
-  methods: {
-    ...mapActions('reports', [ReportActions.FETCH_REPORTS])
-  }
-})
-export default class ReportsTable extends Mixins(StatusMixin) {
-  page!: number;
-  pages!: number;
-  rows!: number;
-  records!: number;
-  reports!: ReportCache[];
-  headers: DataTableHeader[] = [
-    {
-      text: this.$t('profit_loss_reports.columns.name').toString(),
-      value: 'name'
-    },
-    {
-      text: this.$t('profit_loss_reports.columns.created').toString(),
-      value: 'created'
-    },
-    {
-      text: this.$t('profit_loss_reports.columns.start').toString(),
-      value: 'start'
-    },
-    {
-      text: this.$t('profit_loss_reports.columns.end').toString(),
-      value: 'end'
-    },
-    {
-      text: this.$t('profit_loss_reports.columns.size').toString(),
-      value: 'sizeOnDisk'
-    }
-  ];
-  [ReportActions.FETCH_REPORTS]!: (refresh: boolean) => Promise<void>;
+  setup() {
+    const selected: Ref<string[]> = ref([]);
+    const store = useStore();
 
-  async refresh() {
-    await this[ReportActions.FETCH_REPORTS](true);
-  }
+    const state: RotkehlchenState = store.state;
+    const itemsPerPage = state.settings!!.itemsPerPage;
 
-  async mounted() {
-    await this[ReportActions.FETCH_REPORTS](false);
+    const headers: DataTableHeader[] = [
+      {
+        text: i18n.t('profit_loss_reports.columns.name').toString(),
+        value: 'name'
+      },
+      {
+        text: i18n.t('profit_loss_reports.columns.created').toString(),
+        value: 'created'
+      },
+      {
+        text: i18n.t('profit_loss_reports.columns.start').toString(),
+        value: 'start'
+      },
+      {
+        text: i18n.t('profit_loss_reports.columns.end').toString(),
+        value: 'end'
+      },
+      {
+        text: i18n.t('profit_loss_reports.columns.size').toString(),
+        value: 'sizeOnDisk'
+      }
+    ];
+
+    const payload = ref<PagedResourceParameters>({
+      limit: itemsPerPage,
+      offset: 0,
+      orderByAttribute: 'created',
+      ascending: false
+    });
+
+    const reports = computed(() => {
+      const state: RotkehlchenState = store.state;
+      return state.reports!!.index.entries;
+    });
+    const limit = computed(() => {
+      const state: RotkehlchenState = store.state;
+      return state.reports!!.index.entriesLimit;
+    });
+    const found = computed(() => {
+      const state: RotkehlchenState = store.state;
+      return state.reports!!.index.entriesFound;
+    });
+    const total = computed(() => {
+      const state: RotkehlchenState = store.state;
+      return state.reports!!.index.entriesTotal;
+    });
+
+    const fetchReports = async (refresh: boolean = false) => {
+      await store.dispatch(`reports/${ReportActions.FETCH_REPORTS}`, {
+        ...payload.value,
+        onlyCache: !refresh
+      });
+    };
+    const refresh = async () => await fetchReports(true);
+    const onPaginationUpdate = ({
+      ascending,
+      page,
+      sortBy,
+      itemsPerPage
+    }: {
+      page: number;
+      itemsPerPage: number;
+      sortBy: keyof ReportCache;
+      ascending: boolean;
+    }) => {
+      const offset = (page - 1) * itemsPerPage;
+      payload.value = {
+        ...payload.value,
+        orderByAttribute: sortBy,
+        offset,
+        limit: itemsPerPage,
+        ascending
+      };
+      fetchReports().then();
+    };
+
+    onBeforeMount(async () => await fetchReports());
+
+    const { isSectionRefreshing, shouldShowLoadingScreen } =
+      setupStatusChecking();
+
+    return {
+      headers,
+      reports,
+      limit,
+      total,
+      found,
+      loading: shouldShowLoadingScreen(Section.REPORTS),
+      refreshing: isSectionRefreshing(Section.REPORTS),
+      refresh,
+      selected,
+      fetchReports,
+      onPaginationUpdate
+    };
   }
-}
+});
 </script>
