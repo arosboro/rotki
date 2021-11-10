@@ -51,7 +51,7 @@ export type ProfitLossEvent = z.infer<typeof ProfitLossEvent>
 
 export const ReportCacheData = z.object({
   overview: ProfitLossOverviewData,
-  events: z.array(ProfitLossEvent),
+  entries: z.array(ProfitLossEvent),
   processed: z.number(),
   limit: z.number(),
   loaded: z.boolean(),
@@ -61,9 +61,10 @@ export const ReportCacheData = z.object({
 export type ReportData = z.infer<typeof ReportCacheData>
 
 export const ReportCache = z.object({
+  overview: ProfitLossOverviewData,
   identifier: z.number(),
   name: z.string(),
-  created: z.union([z.number(), z.null()]),
+  timestamp: z.union([z.number(), z.null()]),
   startTs: z.number(),
   endTs: z.number(),
   sizeOnDisk: z.union([NumericString, z.null()])
@@ -116,15 +117,20 @@ export const ReportError = z.object({
 export type ReportError = z.infer<typeof ReportError>
 
 export const ReportsTableData = PagedResourceParameters.extend({
-    entries_found: z.number(),
+    entriesFound: z.number(),
+    entriesTotal: z.union([z.number(), z.undefined()]),
     entries: z.array(ReportCache),
 }).transform(arg => {
   const reports: {
-    entriesFound?: number;
     entries?: ReportCache[]
+    entriesFound?: number;
+    entriesTotal?: number;
+    entriesLimit?: number;
   } = {
+    entries: arg.entries,
     entriesFound: arg.entries_found,
-    entries: arg.entries
+    entriesTotal: arg.entries_total,
+    entriesLimit: arg.entries_limit,
   };
   return reports;
 });

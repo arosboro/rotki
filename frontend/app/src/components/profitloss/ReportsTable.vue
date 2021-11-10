@@ -7,24 +7,22 @@
       <v-sheet outlined rounded>
         <data-table
           :headers="headers"
-          :items="index.reports"
+          :items="entries"
           show-expand
           single-expand
-          sort-by="created"
+          sort-by="timestamp"
           item-key="identifier"
-          :page.sync="index.page"
-          :items-per-page.sync="index.rows"
         >
           <template #item.name="{ item }">
             {{ item.name }}
           </template>
-          <template #item.created="{ item }">
-            <date-display :timestamp="item.created" />
+          <template #item.timestamp="{ item }">
+            <date-display :timestamp="item.timestamp" />
           </template>
-          <template #item.start="{ item }">
+          <template #item.startTs="{ item }">
             <date-display :timestamp="item.startTs" />
           </template>
-          <template #item.end="{ item }">
+          <template #item.endTs="{ item }">
             <date-display :timestamp="item.endTs" />
           </template>
           <template #item.sizeOnDisk="{ item }">
@@ -69,29 +67,6 @@ export default defineComponent({
     const state: RotkehlchenState = store.state;
     const itemsPerPage = state.settings!!.itemsPerPage;
 
-    const headers: DataTableHeader[] = [
-      {
-        text: i18n.t('profit_loss_reports.columns.name').toString(),
-        value: 'name'
-      },
-      {
-        text: i18n.t('profit_loss_reports.columns.created').toString(),
-        value: 'created'
-      },
-      {
-        text: i18n.t('profit_loss_reports.columns.start').toString(),
-        value: 'start'
-      },
-      {
-        text: i18n.t('profit_loss_reports.columns.end').toString(),
-        value: 'end'
-      },
-      {
-        text: i18n.t('profit_loss_reports.columns.size').toString(),
-        value: 'sizeOnDisk'
-      }
-    ];
-
     const payload = ref<PagedResourceParameters>({
       limit: itemsPerPage,
       offset: 0,
@@ -99,7 +74,7 @@ export default defineComponent({
       ascending: false
     });
 
-    const reports = computed(() => {
+    const entries = computed(() => {
       const state: RotkehlchenState = store.state;
       return state.reports!!.index.entries;
     });
@@ -151,8 +126,7 @@ export default defineComponent({
       setupStatusChecking();
 
     return {
-      headers,
-      reports,
+      entries,
       limit,
       total,
       found,
@@ -162,6 +136,35 @@ export default defineComponent({
       selected,
       fetchReports,
       onPaginationUpdate
+    };
+  },
+  data: function () {
+    return {
+      headers: (() => {
+        const headers: DataTableHeader[] = [
+          {
+            text: i18n.t('profit_loss_reports.columns.name').toString(),
+            value: 'name'
+          },
+          {
+            text: i18n.t('profit_loss_reports.columns.created').toString(),
+            value: 'created'
+          },
+          {
+            text: i18n.t('profit_loss_reports.columns.start').toString(),
+            value: 'start'
+          },
+          {
+            text: i18n.t('profit_loss_reports.columns.end').toString(),
+            value: 'end'
+          },
+          {
+            text: i18n.t('profit_loss_reports.columns.size').toString(),
+            value: 'sizeOnDisk'
+          }
+        ];
+        return headers;
+      })()
     };
   }
 });

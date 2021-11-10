@@ -77,6 +77,7 @@
       <profit-loss-overview class="mt-8" />
       <profit-loss-events class="mt-8" />
     </div>
+    <reports-table v-show="!isRunning" class="mt-8" />
     <progress-screen v-if="isRunning" :progress="progress">
       <template #message>
         <div v-if="processingState" class="medium text-h6 mb-4">
