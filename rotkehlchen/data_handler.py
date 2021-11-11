@@ -121,7 +121,7 @@ class DataHandler():
         )
         self.cache: DBTaxableEvents = DBTaxableEvents(
             database=self.db,
-            msg_aggregator=self.msg_aggregator
+            msg_aggregator=self.msg_aggregator,
         )
         self.user_data_dir = user_data_dir
         self.logged_in = True

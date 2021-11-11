@@ -109,6 +109,26 @@ class DBReportsReportIDFilter(DBFilter):
         else:
             value = self.report_id
 
+        return ['identifier=?'], [value]
+
+
+@dataclass(init=True, repr=True, eq=True, order=False, unsafe_hash=False, frozen=False)
+class DBEventsReportIDFilter(DBFilter):
+    report_id: Optional[Union[str, int]] = None
+
+    def prepare(self) -> Tuple[List[str], List[Any]]:
+        if self.report_id is None:
+            return [], []
+
+        if isinstance(self.report_id, str):
+            try:
+                value = int(self.report_id)
+            except DeserializationError as e:
+                log.error(f'Failed to filter a DB transaction query by report_id: {str(e)}')
+                return [], []
+        else:
+            value = self.report_id
+
         return ['report_id=?'], [value]
 
 
@@ -264,22 +284,46 @@ class ETHTransactionsFilterQuery(DBFilterQuery):
 class ReportsFilterQuery(DBFilterQuery):
 
     @property
-    def report_id_filter(self) -> DBReportsReportIDFilter:
-        if len(self.filters) >= 2 and isinstance(self.filters[1], DBReportsReportIDFilter):
-            return self.filters[1]
-        return DBReportsReportIDFilter(and_op=True)
+    def report_id_filter(self) -> Optional[Union[DBReportsReportIDFilter, DBEventsReportIDFilter]]:
+        if (len(self.filters) >= 1 and (
+                isinstance(self.filters[0], DBReportsReportIDFilter)
+                or isinstance(self.filters[0], DBEventsReportIDFilter))):
+            return self.filters[0]
+        return None
+
+    @report_id_filter.setter
+    def report_id_filter(self, report_id_filter: Optional[Union[DBReportsReportIDFilter,
+                                                          DBEventsReportIDFilter]]) -> None:
+        if (len(self.filters) >= 1
+                and (
+                    isinstance(self.filters[0], DBReportsReportIDFilter)
+                    or isinstance(self.filters[0], DBEventsReportIDFilter))
+                and (
+                    report_id_filter is None
+                    or isinstance(report_id_filter, DBReportsReportIDFilter)
+                    or isinstance(report_id_filter, DBEventsReportIDFilter)
+                )):
+            self.filters[0] = report_id_filter
 
     @property
     def timestamp_filter(self) -> DBTimestampFilter:
         if len(self.filters) >= 2 and isinstance(self.filters[1], DBTimestampFilter):
             return self.filters[1]
-        if len(self.filters) >= 2 and isinstance(self.filters[2], DBTimestampFilter):
-            return self.filters[2]  # There is also a DBReportsReportIDFilter first
         return DBTimestampFilter(and_op=True)  # no range specified
 
     @property
     def report_id(self) -> Optional[Union[str, int]]:
-        return self.report_id_filter.report_id
+        report_id_filter = self.report_id_filter
+        if report_id_filter is None:
+            return None
+        return report_id_filter.report_id
+
+    @property
+    def report_id(self) -> Optional[Union[str, int]]:
+        report_id_filter = self.report_id_filter
+        if report_id_filter is None:
+            return None
+        return report_id_filter.report_id
 
     @property
     def from_ts(self) -> Optional[Timestamp]:
@@ -305,9 +349,9 @@ class ReportsFilterQuery(DBFilterQuery):
             order_ascending: bool = True,
             limit: Optional[int] = None,
             offset: Optional[int] = None,
+            report_id: Optional[Union[str, int]] = None,
             from_ts: Optional[Timestamp] = None,
             to_ts: Optional[Timestamp] = None,
-            report_id: Optional[Union[str, int]] = None,
     ) -> 'ReportsFilterQuery':
         filter_query = cls.create(
             and_op=and_op,

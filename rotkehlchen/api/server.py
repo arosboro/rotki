@@ -178,6 +178,11 @@ URLS_V1: URLS = [
     ('/history/export/', HistoryExportingResource),
     ('/history/download/', HistoryDownloadingResource),
     ('/reports/', HistoryReportsResource),
+    (
+        '/reports/<int:report_id>',
+        HistoryReportsResource,
+        'per_report_events_resource',
+    ),
     ('/queried_addresses', QueriedAddressesResource),
     ('/blockchains/ETH/transactions', EthereumTransactionsResource),
     (

@@ -567,26 +567,28 @@ class Rotkehlchen():
             start_ts: Timestamp,
             end_ts: Timestamp,
     ) -> Tuple[Dict[str, Any], str]:
-        def process_cache(cache_data: List[Dict[str, Any]]) -> HistoryResult:
-            actions = [y for x in cache_data for y in x.values]
+        def process_cache(cache_data: List[Dict[str, Any]]) -> Union[None, HistoryResult]:
+            if cache_data:
+                actions = [y for x in cache_data for y in x.values()]
 
-            return (
-                error_or_empty,
-                list(filter(lambda x: type(x) in ['Trade',
-                                                  'MarginPosition',
-                                                  'AMMTrade'], actions)),
-                list(filter(lambda x: type(x) in ['Loan'], actions)),
-                list(filter(lambda x: type(x) in ['AssetMovement'], actions)),
-                list(filter(lambda x: type(x) in ['EthereumTransaction'],
-                            actions)),
-                list(filter(lambda x: type(x) in ['DefiEvent'], actions)),
-                list(filter(lambda x: type(x) in ['LedgerAction'], actions)))
+                return (
+                    error_or_empty,
+                    list(filter(lambda x: type(x) in ['Trade',
+                                                      'MarginPosition',
+                                                      'AMMTrade'], actions)),
+                    list(filter(lambda x: type(x) in ['Loan'], actions)),
+                    list(filter(lambda x: type(x) in ['AssetMovement'], actions)),
+                    list(filter(lambda x: type(x) in ['EthereumTransaction'],
+                                actions)),
+                    list(filter(lambda x: type(x) in ['DefiEvent'], actions)),
+                    list(filter(lambda x: type(x) in ['LedgerAction'], actions)))
+            return '', [], [], [], [], [], []
 
         if report_id:
             (
                 data,
                 query_start_ts,
-                query_end_ts) = self.data.cache.single_report_query_events(
+                query_end_ts) = self.data.cache.get_or_query_report_events(
                 report_id=report_id,
                 start_ts=start_ts,
                 end_ts=end_ts)

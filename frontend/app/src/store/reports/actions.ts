@@ -37,11 +37,9 @@ export const actions: ActionTree<ReportState, RotkehlchenState> = {
     }, 2000);
 
     try {
-      const { report_id, page, rows, start, end } = payload;
+      const { report_id, start, end } = payload;
       const { taskId } = await api.processTradeHistoryAsync(
         report_id,
-        page,
-        rows,
         start,
         end
       );
@@ -100,7 +98,7 @@ export const actions: ActionTree<ReportState, RotkehlchenState> = {
 
       const report = {
         overview: overview,
-        events: allEvents,
+        allEvents: allEvents,
         limit: eventsLimit,
         processed: eventsProcessed,
         firstProcessedTimestamp
@@ -121,7 +119,7 @@ export const actions: ActionTree<ReportState, RotkehlchenState> = {
     } as ReportProgress);
   },
 
-  async [ReportActions.FETCH_REPORTS]({ commit, state }) {
+  async [ReportActions.FETCH_REPORTS]({ commit }) {
     const notify = async (error?: any) => {
       logger.error(error);
       const message = error?.message ?? error ?? '';
@@ -134,10 +132,7 @@ export const actions: ActionTree<ReportState, RotkehlchenState> = {
       });
     };
     try {
-      const result = await api.reports.fetchReports(
-        state.index.page,
-        state.index.rows
-      );
+      const result = await api.reports.fetchReports();
       commit(ReportMutations.SET_REPORTS, result);
     } catch (e: any) {
       await notify(e);

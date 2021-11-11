@@ -415,6 +415,7 @@ class CSVExporter():
             'notes': notes,
         }
         log.debug('csv event', **entry)
+        self.all_events.append(entry)
         if not self.cached:
             self.cache.add_event(self.report_id, timestamp, entry)
         new_entry = entry.copy()

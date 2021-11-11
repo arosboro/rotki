@@ -4,7 +4,7 @@ from pysqlcipher3 import dbapi2 as sqlcipher
 from typing import TYPE_CHECKING, Dict, List, Any, Tuple, Optional
 
 from rotkehlchen.accounting.accountant import FREE_PNL_EVENTS_LIMIT
-from rotkehlchen.db.filtering import ReportsFilterQuery
+from rotkehlchen.db.filtering import ReportsFilterQuery, DBEventsReportIDFilter
 from rotkehlchen.db.ranges import DBQueryRanges
 from rotkehlchen.errors import DeserializationError
 from rotkehlchen.logging import RotkehlchenLogsAdapter
@@ -26,7 +26,7 @@ def deserialize_report_from_db(report: Any) -> Dict[str, Any]:
     return {
         'identifier': report[0],
         'name': report[1],
-        'created': report[2],
+        'timestamp': report[2],
         'start_ts': report[3],
         'end_ts': report[4],
         'size_on_disk': report[5],
@@ -52,6 +52,28 @@ def deserialize_event_from_db(result: bytes) -> Dict[str, Any]:
     return pickle.loads(result)
 
 
+def _return_reports_or_events_maybe_limit(
+        entry_type: str,
+        entries: List[Dict[str, Any]],
+        with_limit: bool,
+) -> List[Dict[str, Any]]:
+    if with_limit is False:
+        return entries
+
+    if entry_type == 'events':
+        limit = FREE_PNL_EVENTS_LIMIT
+    else:
+        limit = FREE_REPORTS_LOOKUP_LIMIT
+
+    count: int = 0
+    for _ in entries:
+        count += 1
+
+    returning_entries_length = min(limit, len(entries))
+
+    return entries[:returning_entries_length]
+
+
 class DBTaxableEvents(LockableQueryMixIn):
 
     def __init__(self,
@@ -60,66 +82,6 @@ class DBTaxableEvents(LockableQueryMixIn):
         super().__init__()
         self.db = database
         self.msg_aggregator = msg_aggregator
-
-    def _return_reports_or_events_maybe_limit(
-            self,
-            entry_type: str,
-            entries: List[Dict[str, Any]],
-            with_limit: bool,
-    ) -> List[Dict[str, Any]]:
-        if with_limit is False:
-            return entries
-
-        if entry_type == 'events':
-            limit = FREE_PNL_EVENTS_LIMIT
-        else:
-            limit = FREE_REPORTS_LOOKUP_LIMIT
-
-        count: int = 0
-        for _ in entries:
-            count += 1
-
-        returning_entries_length = min(limit, len(entries))
-
-        return entries[:returning_entries_length]
-
-    def single_report_query_events(
-            self,
-            report_id: int,
-            start_ts: Timestamp,
-            end_ts: Timestamp,
-    ) -> Tuple[List[Dict[str, Any]], Optional[Timestamp], Optional[Timestamp]]:
-        """Only queries cached events and prepares them for the response"""
-        ranges = DBQueryRanges(self.db)
-        ranges_to_query = ranges.get_location_query_ranges(
-            location_string=f'pnl_events_{report_id}',
-            start_ts=start_ts,
-            end_ts=end_ts,
-        )
-        cache_data = []
-        query_start_ts = None
-        query_end_ts = None
-        for query_start_ts, query_end_ts in ranges_to_query:
-            try:
-                cache_data = self.get_all_events(report_id)  # TODO: Change to get events
-
-            except sqlcipher.DatabaseError as e:  # pylint: disable=no-member
-                self.msg_aggregator.add_error(
-                    f'Got error "{str(e)}" while querying the reports cache '
-                    f'from rotki. Events not added to the DB '
-                    f'from_ts: {query_start_ts} '
-                    f'to_ts: {query_end_ts} ',
-                )
-
-        # and also set the last queried timestamps for the report
-        ranges.update_used_query_range(
-            location_string=f'pnl_events_{report_id}',
-            start_ts=start_ts,
-            end_ts=end_ts,
-            ranges_to_query=ranges_to_query,
-        )
-
-        return cache_data, query_start_ts, query_end_ts
 
     @protect_with_lock()
     def query(
@@ -156,16 +118,19 @@ class DBTaxableEvents(LockableQueryMixIn):
             entries = self.get_reports(filter_=filter_query)
         else:
             report = self.get_reports(filter_=filter_query)[0]
-            entries = self.get_events(filter_=filter_query)
+            events_filter_query = filter_query
+            events_filter_query.report_id_filter = DBEventsReportIDFilter(and_op=True,
+                                                                          report_id=report_id)
+            entries = self.get_events(filter_=events_filter_query)
         entry_type = 'reports' if report_id is None else 'events'
         if entry_type == 'reports':
-            return self._return_reports_or_events_maybe_limit(
+            return _return_reports_or_events_maybe_limit(
                 entry_type=entry_type,
                 entries=entries,
                 with_limit=with_limit,
             )
         else:
-            events = self._return_reports_or_events_maybe_limit(
+            events = _return_reports_or_events_maybe_limit(
                 entry_type=entry_type,
                 entries=entries,
                 with_limit=with_limit,
@@ -220,7 +185,7 @@ class DBTaxableEvents(LockableQueryMixIn):
     def get_events(self, filter_: ReportsFilterQuery) -> List[Dict[str, Any]]:
         cursor = self.db.conn_transient.cursor()
         query, bindings = filter_.prepare()
-        query = 'SELECT * FROM pnl_events ' + query
+        query = 'SELECT data FROM pnl_events ' + query
         results = cursor.execute(query, bindings)
 
         events = []
@@ -241,13 +206,13 @@ class DBTaxableEvents(LockableQueryMixIn):
 
     def add_report(self, start_ts: Timestamp, end_ts: Timestamp) -> int:
         cursor = self.db.conn_transient.cursor()
-        created = ts_now()
+        timestamp = ts_now()
         query = """
         INSERT INTO pnl_reports(
-            name, created, start_ts, end_ts
+            name, timestamp, start_ts, end_ts
         )
         VALUES (?, ?, ?, ?)"""
-        cursor.execute(query, (f"Report from {start_ts} to {end_ts}", created, start_ts, end_ts))
+        cursor.execute(query, (f"Report from {start_ts} to {end_ts}", timestamp, start_ts, end_ts))
         identifier = cursor.lastrowid
         self.db.conn_transient.commit()
         return identifier
@@ -291,6 +256,44 @@ class DBTaxableEvents(LockableQueryMixIn):
             tuples=event_tuples,
         )
 
+    def get_or_query_report_events(
+            self,
+            report_id: int,
+            start_ts: Timestamp,
+            end_ts: Timestamp,
+    ) -> Tuple[List[Dict[str, Any]], Optional[Timestamp], Optional[Timestamp]]:
+        """Only queries cached events and prepares them for the response"""
+        ranges = DBQueryRanges(self.db)
+        ranges_to_query = ranges.get_location_query_ranges(
+            location_string=f'pnl_events_{report_id}',
+            start_ts=start_ts,
+            end_ts=end_ts,
+        )
+        cache_data = []
+        query_start_ts = None
+        query_end_ts = None
+        for query_start_ts, query_end_ts in ranges_to_query:
+            try:
+                cache_data = self.get_events(filter_=ReportsFilterQuery.make(report_id=report_id))
+            except sqlcipher.DatabaseError as e:  # pylint: disable=no-member
+                self.msg_aggregator.add_error(
+                    f'Got error "{str(e)}" while querying the reports cache '
+                    f'from rotki. Events not added to the DB '
+                    f'from_ts: {query_start_ts} '
+                    f'to_ts: {query_end_ts} ',
+                )
+
+        # and also set the last queried timestamps for the report
+        ranges.update_used_query_range(
+            location_string=f'pnl_events_{report_id}',
+            start_ts=start_ts,
+            end_ts=end_ts,
+            ranges_to_query=ranges_to_query,
+        )
+        log.debug(f"___cachedata___ {cache_data[0]}")
+
+        return cache_data, query_start_ts, query_end_ts
+
     # def get_events(self,
     #                report_id: int,
     #                from_ts: int,
@@ -320,26 +323,26 @@ class DBTaxableEvents(LockableQueryMixIn):
     #
     #     return events
     #
-    def get_all_events(self, report_id: int) -> List[Dict[str, Any]]:
-        cursor = self.db.conn_transient.cursor()
-        query = """
-                SELECT data from pnl_events
-                WHERE report_id = ?
-                ORDER BY timestamp asc;"""
-        results = cursor.execute(query, report_id)
-
-        events = []
-        for result in results:
-            log.debug(f"get_all_events result: {result}")
-            try:
-                event = deserialize_event_from_db(result[0])
-            except DeserializationError as e:
-                self.msg_aggregator.add_error(
-                    f'Error deserializing PnL Event for Report from the DB. Skipping it.'
-                    f'Error was: {str(e)}',
-                )
-                continue
-
-            events.append(event)
-
-        return events
+    # def get_all_events(self, report_id: int) -> List[Dict[str, Any]]:
+    #     cursor = self.db.conn_transient.cursor()
+    #     query = """
+    #             SELECT data from pnl_events
+    #             WHERE report_id = ?
+    #             ORDER BY timestamp asc;"""
+    #     results = cursor.execute(query, report_id)
+    #
+    #     events = []
+    #     for result in results:
+    #         log.debug(f"get_all_events result: {result}")
+    #         try:
+    #             event = deserialize_event_from_db(result[0])
+    #         except DeserializationError as e:
+    #             self.msg_aggregator.add_error(
+    #                 f'Error deserializing PnL Event for Report from the DB. Skipping it.'
+    #                 f'Error was: {str(e)}',
+    #             )
+    #             continue
+    #
+    #         events.append(event)
+    #
+    #     return events

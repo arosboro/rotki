@@ -408,8 +408,6 @@ export class RotkehlchenApi {
 
   processTradeHistoryAsync(
     report_id: number,
-    page: number,
-    rows: number,
     start: number,
     end: number
   ): Promise<PendingTask> {
@@ -418,8 +416,6 @@ export class RotkehlchenApi {
         params: {
           async_query: true,
           report_id: 0,
-          page: 0,
-          rows: 10,
           from_timestamp: start,
           to_timestamp: end
         },
@@ -701,13 +697,9 @@ export class RotkehlchenApi {
     return request.then(handleResponse);
   }
 
-  listReports(page?: string, rows?: string): Promise<boolean> {
+  listReports(): Promise<boolean> {
     return this.axios
       .get<ActionResult<boolean>>('/reports/', {
-        params: {
-          page: page,
-          rows: rows
-        },
         validateStatus: validStatus
       })
       .then(handleResponse);

@@ -57,15 +57,12 @@ export default class Generate extends Vue {
   valid: boolean = false;
 
   generate() {
+    // TODO get report generated id mapped from response.
     const report_id = 0;
-    const page = 0;
-    const rows = 10;
     const start = convertToTimestamp(this.range.start);
     const end = convertToTimestamp(this.range.end);
     this.$emit('generate', {
       report_id,
-      page,
-      rows,
       start,
       end
     });

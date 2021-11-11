@@ -36,7 +36,7 @@
 
 <script lang="ts">
 import { PagedResourceParameters } from '@rotki/common';
-import { ReportCache } from '@rotki/common/lib/reports';
+import { PagedReport } from '@rotki/common/lib/reports';
 import {
   computed,
   defineComponent,
@@ -106,7 +106,7 @@ export default defineComponent({
     }: {
       page: number;
       itemsPerPage: number;
-      sortBy: keyof ReportCache;
+      sortBy: keyof PagedReport;
       ascending: boolean;
     }) => {
       const offset = (page - 1) * itemsPerPage;

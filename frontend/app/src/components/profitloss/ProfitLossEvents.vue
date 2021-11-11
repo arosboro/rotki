@@ -156,8 +156,9 @@ type IndexedProfitLossEvent = ProfitLossEvent & { index: number };
     AmountDisplay
   },
   computed: {
-    ...mapState('reports', ['currency', 'events', 'limit', 'processed']),
-    ...mapGetters('balances', ['exchangeRate'])
+    ...mapState('reports', ['currency']),
+    ...mapGetters('balances', ['exchangeRate']),
+    ...mapGetters('reports', ['events', 'processed', 'limit'])
   }
 })
 export default class ProfitLossEvents extends Vue {

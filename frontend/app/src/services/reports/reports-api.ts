@@ -1,5 +1,5 @@
 import { ActionResult } from '@rotki/common/lib/data';
-import { ReportsTableData } from '@rotki/common/lib/reports';
+import { PagedReport, ReportsTableData } from '@rotki/common/lib/reports';
 import { AxiosInstance, AxiosTransformer } from 'axios';
 import {
   axiosSnakeCaseTransformer,
@@ -23,14 +23,24 @@ export class ReportsApi {
     );
   }
 
-  fetchReports(page?: number, rows?: number): Promise<ReportsTableData> {
+  fetchReports(): Promise<ReportsTableData> {
     return this.axios
       .get<ActionResult<ReportsTableData>>('/reports', {
-        params: { page, rows },
         validateStatus: validStatus,
         transformResponse: setupTransformer(reportNumericKeys)
       })
       .then(handleResponse)
       .then(result => ReportsTableData.parse(result));
+  }
+
+  fetchReport(report_id: number): Promise<PagedReport> {
+    return this.axios
+      .get<ActionResult<PagedReport>>('/reports', {
+        params: { report_id },
+        validateStatus: validStatus,
+        transformResponse: setupTransformer(reportNumericKeys)
+      })
+      .then(handleResponse)
+      .then(result => PagedReport.parse(result));
   }
 }

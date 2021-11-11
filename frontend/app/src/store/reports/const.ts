@@ -17,7 +17,7 @@ export enum ReportMutations {
   ADD_REPORT = 'addReport',
   CURRENCY = 'currency',
   REPORT_PERIOD = 'reportPeriod',
-  ACCOUNT_SETTINGS = 'accountSettings',
+  ACCOUNTING_SETTINGS = 'accountingSettings',
   RESET = 'reset'
 }
 

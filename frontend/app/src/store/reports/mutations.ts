@@ -18,12 +18,17 @@ import { AccountingSettings } from '@/types/user';
 
 export const mutations: MutationTree<ReportState> = {
   [ReportMutations.SET_REPORT](state: ReportState, payload: PagedReport) {
-    const { overview, entries, processed, limit, firstProcessedTimestamp } =
-      payload;
+    const {
+      overview,
+      allEvents,
+      eventsProcessed,
+      eventsLimit,
+      firstProcessedTimestamp
+    } = payload;
     state.data.overview = { ...overview };
-    state.data.entries = [...entries];
-    state.data.processed = processed;
-    state.data.limit = limit;
+    state.data.allEvents = [...allEvents];
+    state.data.eventsProcessed = eventsProcessed;
+    state.data.eventsLimit = eventsLimit;
     state.data.loaded = true;
     state.data.firstProcessedTimestamp = firstProcessedTimestamp;
   },
@@ -40,7 +45,7 @@ export const mutations: MutationTree<ReportState> = {
     state.reportPeriod = payload;
   },
 
-  [ReportMutations.ACCOUNT_SETTINGS](
+  [ReportMutations.ACCOUNTING_SETTINGS](
     state: ReportState,
     payload: AccountingSettings
   ) {
