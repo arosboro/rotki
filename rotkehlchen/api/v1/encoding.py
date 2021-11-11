@@ -1377,7 +1377,8 @@ class ReportsQuerySchema(
         AsyncQueryArgumentSchema,
         OnlyCacheQuerySchema,
         DBPaginationSchema,
-        DBOrderBySchema):
+        DBOrderBySchema,
+):
     report_id = fields.Integer(load_default=None)
     from_timestamp = TimestampField(load_default=Timestamp(0))
     to_timestamp = TimestampField(load_default=ts_now)
@@ -1394,7 +1395,7 @@ class ReportsQuerySchema(
             order_ascending=False,  # most recent first
             limit=data['limit'],
             offset=data['offset'],
-            report_id=report_id if report_id is not None else None,
+            report_id=report_id,
             from_ts=data['from_timestamp'],
             to_ts=data['to_timestamp'],
         )

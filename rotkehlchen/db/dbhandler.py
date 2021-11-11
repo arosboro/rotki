@@ -478,8 +478,8 @@ class DBHandler:
         return success, msg
 
     def disconnect(self, conn_attribute: Literal['conn', 'conn_transient'] = 'conn') -> None:
-        if conn_attribute and hasattr(self, conn_attribute) and getattr(self, conn_attribute):
-            conn = getattr(self, conn_attribute)
+        conn = getattr(self, conn_attribute, None)
+        if conn:
             conn.close()
             setattr(self, conn_attribute, None)
 

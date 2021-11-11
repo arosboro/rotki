@@ -324,7 +324,7 @@ class Accountant():
         self.eth_transactions_gas_costs = FVal(0)
         self.asset_movement_fees = FVal(0)
         self.csvexporter.reset()
-        if report_id:
+        if report_id is not None:
             self.csvexporter.report_id = report_id
             self.csvexporter.cached = True
         else:

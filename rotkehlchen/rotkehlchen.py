@@ -610,7 +610,7 @@ class Rotkehlchen():
                     query_eth_transactions,
                     query_defi_events,
                     query_ledger_actions,
-                ) = self.events_historian.get_history(  # get_history
+                ) = self.events_historian.get_history(
                     report_id=report_id,
                     start_ts=query_start_ts,
                     end_ts=query_end_ts,

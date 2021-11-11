@@ -122,6 +122,7 @@ class DBTaxableEvents(LockableQueryMixIn):
             events_filter_query.report_id_filter = DBEventsReportIDFilter(and_op=True,
                                                                           report_id=report_id)
             entries = self.get_events(filter_=events_filter_query)
+
         entry_type = 'reports' if report_id is None else 'events'
         if entry_type == 'reports':
             return _return_reports_or_events_maybe_limit(

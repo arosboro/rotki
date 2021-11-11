@@ -959,16 +959,6 @@ class HistoryReportsResource(BaseResource):
 
     get_schema = ReportsQuerySchema()
 
-    # @use_kwargs(get_schema, location='json_and_query')
-    # def get(self,
-    #         report_id: int,
-    #         page: int,
-    #         rows: int,
-    #         ) -> Response:
-    #     return self.rest_api.get_history_reports(
-    #         page=page,
-    #         rows=rows,
-    #     )
 
     @ignore_kwarg_parser.use_kwargs(get_schema, location='json_and_query_and_view_args')
     def get(
