@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     from rotkehlchen.accounting.structures import DefiEvent
     from rotkehlchen.chain.manager import ChainManager
     from rotkehlchen.db.dbhandler import DBHandler
-    from rotkehlchen.db.taxable_events import DBTaxableEvents
+    from rotkehlchen.db.cache_handler import CacheHandler
 
 logger = logging.getLogger(__name__)
 log = RotkehlchenLogsAdapter(logger)
@@ -105,7 +105,7 @@ class EventsHistorian():
             self,
             user_directory: Path,
             db: 'DBHandler',
-            cache: 'DBTaxableEvents',
+            cache: 'CacheHandler',
             msg_aggregator: MessagesAggregator,
             exchange_manager: ExchangeManager,
             chain_manager: 'ChainManager',
@@ -524,7 +524,7 @@ class EventsHistorian():
 
     def get_history(
             self,
-            report_id: int,
+            report_id: Optional[int],
             start_ts: Timestamp,
             end_ts: Timestamp,
             has_premium: bool,

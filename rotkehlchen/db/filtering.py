@@ -2,6 +2,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any, List, NamedTuple, Optional, Tuple, Union, cast
 
+from rotkehlchen.accounting.typing import AccountingEventType
 from rotkehlchen.errors import DeserializationError
 from rotkehlchen.logging import RotkehlchenLogsAdapter
 from rotkehlchen.typing import ChecksumEthAddress, Timestamp
@@ -113,7 +114,7 @@ class DBReportsReportIDFilter(DBFilter):
 
 
 @dataclass(init=True, repr=True, eq=True, order=False, unsafe_hash=False, frozen=False)
-class DBEventsReportIDFilter(DBFilter):
+class DBReportDataReportIDFilter(DBFilter):
     report_id: Optional[Union[str, int]] = None
 
     def prepare(self) -> Tuple[List[str], List[Any]]:
@@ -130,6 +131,26 @@ class DBEventsReportIDFilter(DBFilter):
             value = self.report_id
 
         return ['report_id=?'], [value]
+
+
+@dataclass(init=True, repr=True, eq=True, order=False, unsafe_hash=False, frozen=False)
+class DBReportDataEventTypeFilter(DBFilter):
+    event_type: Optional[Union[str, AccountingEventType]] = None
+
+    def prepare(self) -> Tuple[List[str], List[Any]]:
+        if self.event_type is None:
+            return [], []
+
+        if isinstance(self.event_type, str):
+            try:
+                value = AccountingEventType.deserialize_from_db(self.event_type)
+            except DeserializationError as e:
+                log.error(f'Failed to filter a DB transaction query by event_type: {str(e)}')
+                return [], []
+        else:
+            value = self.event_type
+
+        return ['event_type=?'], [str(value)]
 
 
 @dataclass(init=True, repr=True, eq=True, order=False, unsafe_hash=False, frozen=False)
@@ -284,39 +305,16 @@ class ETHTransactionsFilterQuery(DBFilterQuery):
 class ReportsFilterQuery(DBFilterQuery):
 
     @property
-    def report_id_filter(self) -> Optional[Union[DBReportsReportIDFilter, DBEventsReportIDFilter]]:
-        if (len(self.filters) >= 1 and (
-                isinstance(self.filters[0], DBReportsReportIDFilter)
-                or isinstance(self.filters[0], DBEventsReportIDFilter))):
+    def report_id_filter(self) -> Optional[DBReportsReportIDFilter]:
+        if len(self.filters) >= 1 and isinstance(self.filters[0], DBReportsReportIDFilter):
             return self.filters[0]
         return None
-
-    @report_id_filter.setter
-    def report_id_filter(self, report_id_filter: Optional[Union[DBReportsReportIDFilter,
-                                                          DBEventsReportIDFilter]]) -> None:
-        if (len(self.filters) >= 1
-                and (
-                    isinstance(self.filters[0], DBReportsReportIDFilter)
-                    or isinstance(self.filters[0], DBEventsReportIDFilter))
-                and (
-                    report_id_filter is None
-                    or isinstance(report_id_filter, DBReportsReportIDFilter)
-                    or isinstance(report_id_filter, DBEventsReportIDFilter)
-                )):
-            self.filters[0] = report_id_filter
 
     @property
     def timestamp_filter(self) -> DBTimestampFilter:
         if len(self.filters) >= 2 and isinstance(self.filters[1], DBTimestampFilter):
             return self.filters[1]
         return DBTimestampFilter(and_op=True)  # no range specified
-
-    @property
-    def report_id(self) -> Optional[Union[str, int]]:
-        report_id_filter = self.report_id_filter
-        if report_id_filter is None:
-            return None
-        return report_id_filter.report_id
 
     @property
     def report_id(self) -> Optional[Union[str, int]]:
@@ -372,3 +370,90 @@ class ReportsFilterQuery(DBFilterQuery):
         )
         filter_query.filters = filters
         return cast('ReportsFilterQuery', filter_query)
+
+
+@dataclass(init=True, repr=True, eq=True, order=False, unsafe_hash=False, frozen=False)
+class ReportDataFilterQuery(DBFilterQuery):
+
+    @property
+    def report_id_filter(self) -> Optional[DBReportDataReportIDFilter]:
+        if len(self.filters) >= 1 and isinstance(self.filters[0], DBReportDataReportIDFilter):
+            return self.filters[0]
+        return None
+
+    @property
+    def event_type_filter(self) -> Optional[DBReportDataEventTypeFilter]:
+        if len(self.filters) >= 2 and isinstance(self.filters[1], DBReportDataEventTypeFilter):
+            return self.filters[1]
+        return None
+
+    @property
+    def timestamp_filter(self) -> DBTimestampFilter:
+        if len(self.filters) >= 3 and isinstance(self.filters[2], DBTimestampFilter):
+            return self.filters[2]
+        return DBTimestampFilter(and_op=True)  # no range specified
+
+    @property
+    def report_id(self) -> Optional[Union[str, int]]:
+        report_id_filter = self.report_id_filter
+        if report_id_filter is None:
+            return None
+        return report_id_filter.report_id
+
+    @property
+    def event_type(self) -> Optional[str]:
+        event_type_filter = self.event_type_filter
+        if event_type_filter is None:
+            return None
+        return event_type_filter.event_type
+
+    @property
+    def from_ts(self) -> Optional[Timestamp]:
+        return self.timestamp_filter.from_ts
+
+    @from_ts.setter
+    def from_ts(self, from_ts: Optional[Timestamp]) -> None:
+        self.timestamp_filter.from_ts = from_ts
+
+    @property
+    def to_ts(self) -> Optional[Timestamp]:
+        return self.timestamp_filter.to_ts
+
+    @to_ts.setter
+    def to_ts(self, to_ts: Optional[Timestamp]) -> None:
+        self.timestamp_filter.to_ts = to_ts
+
+    @classmethod
+    def make(
+            cls,
+            and_op: bool = True,
+            order_by_attribute: str = 'timestamp',
+            order_ascending: bool = True,
+            limit: Optional[int] = None,
+            offset: Optional[int] = None,
+            report_id: Optional[Union[str, int]] = None,
+            event_type: Optional[str] = None,
+            from_ts: Optional[Timestamp] = None,
+            to_ts: Optional[Timestamp] = None,
+    ) -> 'ReportDataFilterQuery':
+        filter_query = cls.create(
+            and_op=and_op,
+            limit=limit,
+            offset=offset,
+            order_by_attribute=order_by_attribute,
+            order_ascending=order_ascending,
+        )
+        filters: List[DBFilter] = []
+        if report_id:
+            filters.append(DBReportDataReportIDFilter(and_op=True, report_id=report_id))
+        if event_type:
+            filters.append(DBReportDataEventTypeFilter(and_op=True, event_type=event_type))
+        filters.append(
+            DBTimestampFilter(
+                and_op=True,
+                from_ts=from_ts,
+                to_ts=to_ts,
+            ),
+        )
+        filter_query.filters = filters
+        return cast('ReportDataFilterQuery', filter_query)

@@ -139,7 +139,7 @@ DBTupleType = Literal[
     'margin_position',
     'ethereum_transaction',
     'amm_swap',
-    'pnl_event',
+    'accounting_event',
 ]
 
 # Tuples that contain first the name of a table and then the columns that
@@ -2366,14 +2366,29 @@ class DBHandler:
             ],
             conn_attribute: Literal['conn', 'conn_transient'] = 'conn',
             op: Literal['OR', 'AND'] = 'OR',
-            **kwargs: Any,
+            **kwargs: Dict[str, int],
     ) -> int:
-        """Returns how many of a certain type of entry are saved in the DB"""
+        """Returns how many of a certain type of entry are saved in the DB
+        Can accept int or string kwargs"""
         cursor = getattr(self, conn_attribute).cursor()
         cursorstr = f'SELECT COUNT(*) from {entries_table}'
         if len(kwargs) != 0:
             cursorstr += ' WHERE'
-        op.join([f' {arg} = "{val}" ' for arg, val in kwargs.items()])
+            if len(kwargs.items()) == 1:
+                for arg, val in kwargs.items():
+                    if isinstance(val, int):
+                        cursorstr += f' {arg} = {val}'
+                    if isinstance(val, str):
+                        cursorstr += f' {arg} = "{val}"'
+        if len(kwargs.items()) > 1:
+            arg_strings: List[str] = []
+            for arg, val in kwargs.items():
+                if isinstance(val, int):
+                    arg_strings.append(f' {arg} = {val}')
+                if isinstance(val, str):
+                    arg_strings.append(f' {arg} = "{val}"')
+            op.join(arg_strings)
+            cursorstr += op
         cursorstr += ';'
         query = cursor.execute(cursorstr)
         return query.fetchone()[0]

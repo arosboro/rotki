@@ -55,7 +55,7 @@ from rotkehlchen.fval import FVal
 from rotkehlchen.globaldb import GlobalDBHandler
 from rotkehlchen.globaldb.updates import AssetsUpdater
 from rotkehlchen.greenlets import GreenletManager
-from rotkehlchen.history.events import EventsHistorian, HistoryResult
+from rotkehlchen.history.events import EventsHistorian
 from rotkehlchen.history.price import PriceHistorian
 from rotkehlchen.history.typing import HistoricalPriceOracle
 from rotkehlchen.icons import IconManager
@@ -563,65 +563,12 @@ class Rotkehlchen():
 
     def process_history(
             self,
-            report_id: int,
+            report_id: Optional[int],
             start_ts: Timestamp,
             end_ts: Timestamp,
     ) -> Tuple[Dict[str, Any], str]:
-        def process_cache(cache_data: List[Dict[str, Any]]) -> Union[None, HistoryResult]:
-            if cache_data:
-                actions = [y for x in cache_data for y in x.values()]
-
-                return (
-                    error_or_empty,
-                    list(filter(lambda x: type(x) in ['Trade',
-                                                      'MarginPosition',
-                                                      'AMMTrade'], actions)),
-                    list(filter(lambda x: type(x) in ['Loan'], actions)),
-                    list(filter(lambda x: type(x) in ['AssetMovement'], actions)),
-                    list(filter(lambda x: type(x) in ['EthereumTransaction'],
-                                actions)),
-                    list(filter(lambda x: type(x) in ['DefiEvent'], actions)),
-                    list(filter(lambda x: type(x) in ['LedgerAction'], actions)))
-            return '', [], [], [], [], [], []
-
-        if report_id:
-            (
-                data,
-                query_start_ts,
-                query_end_ts) = self.data.cache.get_or_query_report_events(
-                report_id=report_id,
-                start_ts=start_ts,
-                end_ts=end_ts)
-            (
-                error_or_empty,
-                history,
-                loan_history,
-                asset_movements,
-                eth_transactions,
-                defi_events,
-                ledger_actions,
-            ) = process_cache(data)
-            if query_start_ts and query_end_ts:
-                (
-                    error_or_empty,
-                    query_history,
-                    query_loan_history,
-                    query_asset_movements,
-                    query_eth_transactions,
-                    query_defi_events,
-                    query_ledger_actions,
-                ) = self.events_historian.get_history(
-                    report_id=report_id,
-                    start_ts=query_start_ts,
-                    end_ts=query_end_ts,
-                    has_premium=self.premium is not None,
-                )
-                history.extend(query_history)
-                loan_history.extend(query_loan_history)
-                asset_movements.extend(query_asset_movements)
-                eth_transactions.extend(query_eth_transactions)
-                defi_events.extend(query_defi_events)
-                ledger_actions.extend(query_ledger_actions)
+        if report_id is not None:
+            return self.data.cache.process_history(report_id, with_limit=self.premium is None)
         else:
             (
                 error_or_empty,
@@ -631,23 +578,23 @@ class Rotkehlchen():
                 eth_transactions,
                 defi_events,
                 ledger_actions,
-            ) = self.events_historian.get_history(  # get_history
+            ) = self.events_historian.get_history(
                 report_id=report_id,
                 start_ts=start_ts,
                 end_ts=end_ts,
                 has_premium=self.premium is not None,
             )
-        result = self.accountant.process_history(
-            report_id=report_id,
-            start_ts=start_ts,
-            end_ts=end_ts,
-            trade_history=history,
-            loan_history=loan_history,
-            asset_movements=asset_movements,
-            eth_transactions=eth_transactions,
-            defi_events=defi_events,
-            ledger_actions=ledger_actions,
-        )
+            result = self.accountant.process_history(
+                report_id=report_id,
+                start_ts=start_ts,
+                end_ts=end_ts,
+                trade_history=history,
+                loan_history=loan_history,
+                asset_movements=asset_movements,
+                eth_transactions=eth_transactions,
+                defi_events=defi_events,
+                ledger_actions=ledger_actions,
+            )
         return result, error_or_empty
 
     def query_balances(

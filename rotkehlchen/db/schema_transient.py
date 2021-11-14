@@ -8,6 +8,9 @@ CREATE TABLE IF NOT EXISTS pnl_reports (
     timestamp INTEGER,
     start_ts INTEGER,
     end_ts INTEGER,
+    overview TEXT,
+    first_processed_timestamp INTEGER,
+    events_processed INTEGER,
     size_on_disk INTEGER
 );
 """
@@ -18,7 +21,8 @@ CREATE TABLE IF NOT EXISTS pnl_events (
     identifier INTEGER NOT NULL PRIMARY KEY,
     report_id INTEGER NOT NULL,
     timestamp INTEGER NOT NULL,
-    data BLOB NOT NULL,
+    event_type TEXT NOT NULL,
+    data TEXT NOT NULL,
     FOREIGN KEY (report_id) REFERENCES pnl_reports(identifier) ON DELETE CASCADE ON UPDATE CASCADE
 );
 """

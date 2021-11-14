@@ -37,12 +37,8 @@ export const actions: ActionTree<ReportState, RotkehlchenState> = {
     }, 2000);
 
     try {
-      const { report_id, start, end } = payload;
-      const { taskId } = await api.processTradeHistoryAsync(
-        report_id,
-        start,
-        end
-      );
+      const { start, end } = payload;
+      const { taskId } = await api.processTradeHistoryAsync(start, end);
       commit('reportPeriod', { start, end });
       const task = createTask(taskId, TaskType.TRADE_HISTORY, {
         title: i18n.t('actions.reports.generate.task.title').toString(),

@@ -8,6 +8,7 @@ from zipfile import ZipFile
 
 from rotkehlchen.accounting.ledger_actions import LedgerAction
 from rotkehlchen.accounting.structures import DefiEvent
+from rotkehlchen.accounting.typing import NamedJson, AccountingEventType, AccountingEventCacheEntry
 from rotkehlchen.assets.asset import Asset
 from rotkehlchen.constants import (
     EV_ASSET_MOVE,
@@ -39,7 +40,7 @@ if TYPE_CHECKING:
     from rotkehlchen.accounting.cost_basis import CostBasisInfo
     from rotkehlchen.db.dbhandler import DBHandler
     from rotkehlchen.db.settings import DBSettings
-    from rotkehlchen.db.taxable_events import DBTaxableEvents
+    from rotkehlchen.db.cache_handler import CacheHandler
 
 logger = logging.getLogger(__name__)
 log = RotkehlchenLogsAdapter(logger)
@@ -95,7 +96,7 @@ class CSVExporter():
     def __init__(
             self,
             database: 'DBHandler',
-            cache: 'DBTaxableEvents',
+            cache: 'CacheHandler',
             user_directory: Path,
             create_csv: bool,
     ):
@@ -146,8 +147,9 @@ class CSVExporter():
         self.report_id = 0
         self.cached = False
 
-    def add_report(self, start_ts: Timestamp, end_ts: Timestamp) -> None:
-        self.report_id = self.cache.add_report(start_ts, end_ts)
+    def add_report(self, start_ts: Timestamp, end_ts: Timestamp) -> int:
+        self.report_id = self.cache.reports.add_report(start_ts, end_ts)
+        return self.report_id
 
     def timestamp_to_date(self, timestamp: Timestamp) -> str:
         return timestamp_to_date(
@@ -417,7 +419,41 @@ class CSVExporter():
         log.debug('csv event', **entry)
         self.all_events.append(entry)
         if not self.cached:
-            self.cache.add_event(self.report_id, timestamp, entry)
+            # TODO: NamedTuple AccountingEventCacheEntry with better primitive types
+            cache_entry = AccountingEventCacheEntry(**entry)
+            # cache_json = entry.copy()
+            # cache_json['event_type'] = cache_json['type']
+            # del cache_json['type']
+            # cache_json['paid_in_profit_currency'] = str(cache_json['paid_in_profit_currency'])
+            # cache_json['paid_in_asset'] = str(cache_json['paid_in_asset'])
+            # cache_json['taxable_amount'] = str(cache_json['taxable_amount'])
+            # cache_json['taxable_bought_cost_in_profit_currency'] = str(
+            #     cache_json['taxable_bought_cost_in_profit_currency'])
+            # cache_json['taxable_received_in_profit_currency'] = str(
+            #     cache_json['taxable_received_in_profit_currency'])
+            # cache_json['received_in_asset'] = str(cache_json['received_in_asset'])
+            # cache_json['net_profit_or_loss'] = str(cache_json['net_profit_or_loss'])
+            # cache_json['time'] = int(cache_json['time'])
+            # cache_json['is_virtual'] = int(cache_json['is_virtual'])
+            #
+            # if cache_json['cost_basis'] is Dict[str, Any]:
+            #     cache_json['cost_basis']['is_complete'] = int(
+            #         cache_json['cost_basis']['is_complete'])
+            #     cache_json['cost_basis']['taxable_bought_cost'] = str(
+            #         cache_json['cost_basis']['taxable_bought_cost'])
+            #     cache_json['cost_basis']['taxfree_bought_cost'] = str(
+            #         cache_json['cost_basis']['taxfree_bought_cost'])
+            #     cache_json['cost_basis'] = str(cache_json['cost_basis'])
+            # if cache_json['cost_basis'] is None:
+            #     del cache_json['cost_basis']
+            # if cache_json['notes'] is None:
+            #     del cache_json['notes']
+            # if cache_json['link'] is None:
+            #     del cache_json['link']
+
+            json_event_type = AccountingEventType.ACCOUNTING_EVENT
+            cache_data: NamedJson = NamedJson(event_type=json_event_type, data=cache_entry.serialize())  # noqa E501
+            self.cache.data.add_data(self.report_id, timestamp, cache_data)
         new_entry = entry.copy()
         # deleting and read link and notes for them to be at the end
         del new_entry['link']

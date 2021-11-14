@@ -23,6 +23,7 @@ from werkzeug.datastructures import FileStorage
 
 from rotkehlchen.accounting.ledger_actions import LedgerAction, LedgerActionType
 from rotkehlchen.accounting.structures import ActionType, BalanceType
+from rotkehlchen.accounting.typing import AccountingEventType
 from rotkehlchen.assets.asset import Asset, EthereumToken, UnderlyingToken
 from rotkehlchen.assets.typing import AssetType
 from rotkehlchen.balances.manual import ManuallyTrackedBalance
@@ -45,7 +46,11 @@ from rotkehlchen.chain.substrate.utils import (
     is_valid_polkadot_address,
 )
 from rotkehlchen.constants.misc import ZERO
-from rotkehlchen.db.filtering import ETHTransactionsFilterQuery, ReportsFilterQuery
+from rotkehlchen.db.filtering import (
+    ETHTransactionsFilterQuery,
+    ReportsFilterQuery,
+    ReportDataFilterQuery,
+)
 from rotkehlchen.db.settings import ModifiableDBSettings
 from rotkehlchen.errors import (
     DeserializationError,
@@ -477,6 +482,36 @@ class EthereumAddressField(fields.Field):
             ) from e
 
         return address
+
+
+class AccountingEventTypeField(fields.Field):
+
+    @staticmethod
+    def _serialize(
+            value: AccountingEventType,
+            attr: str,  # pylint: disable=unused-argument
+            obj: Any,  # pylint: disable=unused-argument
+            **_kwargs: Any,
+    ) -> str:
+        return str(value)
+
+    def _deserialize(
+            self,
+            value: str,
+            attr: Optional[str],  # pylint: disable=unused-argument
+            data: Optional[Mapping[str, Any]],  # pylint: disable=unused-argument
+            **_kwargs: Any,
+    ) -> AccountingEventType:
+        # Make sure that given value is an AccountingEvent
+        try:
+            event_type = AccountingEventType.deserialize_from_db(value)
+        except (ValueError, TypeError) as e:
+            raise ValidationError(
+                f'Given value {value} is not an AccountingEventType',
+                field_name='event_type',
+            ) from e
+
+        return event_type
 
 
 class TradeTypeField(fields.Field):
@@ -1365,17 +1400,14 @@ class StatisticsValueDistributionSchema(Schema):
 
 
 class HistoryProcessingSchema(Schema):
-    report_id = fields.Integer(load_default=0)
-    page = fields.Integer(load_default=0)
-    rows = fields.Integer(load_default=10)
+    report_id = fields.Integer(load_default=None)
     from_timestamp = TimestampField(load_default=Timestamp(0))
     to_timestamp = TimestampField(load_default=ts_now)
     async_query = fields.Boolean(load_default=False)
 
 
-class ReportsQuerySchema(
+class AccountingReportsSchema(
         AsyncQueryArgumentSchema,
-        OnlyCacheQuerySchema,
         DBPaginationSchema,
         DBOrderBySchema,
 ):
@@ -1402,7 +1434,41 @@ class ReportsQuerySchema(
 
         return {
             'async_query': data['async_query'],
-            'only_cache': data['only_cache'],
+            'filter_query': filter_query,
+        }
+
+
+class AccountingReportDataSchema(
+    AsyncQueryArgumentSchema,
+    DBPaginationSchema,
+    DBOrderBySchema,
+):
+    report_id = fields.Integer(load_default=None)
+    event_type = AccountingEventTypeField(load_default=None)
+    from_timestamp = TimestampField(load_default=Timestamp(0))
+    to_timestamp = TimestampField(load_default=ts_now)
+
+    @post_load
+    def make_report_data_query(  # pylint: disable=no-self-use
+            self,
+            data: Dict[str, Any],
+            **_kwargs: Any,
+    ) -> Dict[str, Any]:
+        report_id = data.get('report_id')
+        event_type = data.get('event_type')
+        filter_query = ReportDataFilterQuery.make(
+            order_by_attribute='timestamp',  # hard coding order by timestamp for API for now
+            order_ascending=False,  # most recent first
+            limit=data['limit'],
+            offset=data['offset'],
+            report_id=report_id,
+            event_type=event_type,
+            from_ts=data['from_timestamp'],
+            to_ts=data['to_timestamp'],
+        )
+
+        return {
+            'async_query': data['async_query'],
             'filter_query': filter_query,
         }
 

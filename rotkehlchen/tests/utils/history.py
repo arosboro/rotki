@@ -180,7 +180,7 @@ prices = {
 
 
 def check_result_of_history_creation_for_remote_errors(
-        report_id: int,  # pylint: disable=unused-argument
+        report_id: Optional[int],  # pylint: disable=unused-argument
         start_ts: Timestamp,  # pylint: disable=unused-argument
         end_ts: Timestamp,  # pylint: disable=unused-argument
         trade_history: List[Union[Trade, MarginPosition, AMMTrade]],
@@ -698,7 +698,7 @@ def mock_history_processing(
     original_history_processing_function = rotki.accountant.process_history
 
     def check_result_of_history_creation(
-            report_id: int,
+            report_id: Optional[int],
             start_ts: Timestamp,
             end_ts: Timestamp,
             trade_history: List[Union[Trade, MarginPosition, AMMTrade]],
@@ -857,7 +857,7 @@ def mock_history_processing(
         return {}
 
     def check_result_of_history_creation_and_process_it(
-            report_id: int,
+            report_id: Optional[int],
             start_ts: Timestamp,
             end_ts: Timestamp,
             trade_history: List[Union[Trade, MarginPosition, AMMTrade]],

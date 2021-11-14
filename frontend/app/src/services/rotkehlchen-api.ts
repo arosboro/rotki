@@ -407,7 +407,6 @@ export class RotkehlchenApi {
   }
 
   processTradeHistoryAsync(
-    report_id: number,
     start: number,
     end: number
   ): Promise<PendingTask> {
@@ -415,7 +414,7 @@ export class RotkehlchenApi {
       .get<ActionResult<PendingTask>>('/history/', {
         params: {
           async_query: true,
-          report_id: 0,
+          report_id: undefined,
           from_timestamp: start,
           to_timestamp: end
         },

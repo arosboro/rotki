@@ -17,7 +17,7 @@
             {{ item.name }}
           </template>
           <template #item.timestamp="{ item }">
-            <date-display :timestamp="item.timestamp" />
+            {{ item.timestamp }}
           </template>
           <template #item.startTs="{ item }">
             <date-display :timestamp="item.startTs" />
