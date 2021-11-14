@@ -53,8 +53,11 @@ from rotkehlchen.constants.assets import A_ETH
 from rotkehlchen.constants.misc import ZERO
 from rotkehlchen.constants.resolver import ethaddress_to_identifier
 from rotkehlchen.db.ethtx import DBEthTx
-from rotkehlchen.db.filtering import ETHTransactionsFilterQuery, ReportsFilterQuery, \
-    ReportDataFilterQuery
+from rotkehlchen.db.filtering import (
+    ETHTransactionsFilterQuery,
+    ReportsFilterQuery,
+    ReportDataFilterQuery,
+)
 from rotkehlchen.db.ledger_actions import DBLedgerActions
 from rotkehlchen.db.queried_addresses import QueriedAddresses
 from rotkehlchen.db.settings import ModifiableDBSettings
