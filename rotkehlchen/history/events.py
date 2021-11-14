@@ -532,8 +532,7 @@ class EventsHistorian():
         """Creates trades and loans history from start_ts to end_ts"""
         self._reset_variables()
         step = 0
-        total_steps = len(
-            self.exchange_manager.connected_exchanges) + NUM_HISTORY_QUERY_STEPS_EXCL_EXCHANGES  # noqa: E501
+        total_steps = len(self.exchange_manager.connected_exchanges) + NUM_HISTORY_QUERY_STEPS_EXCL_EXCHANGES  # noqa: E501
         log.info(
             'Get/create trade history',
             start_ts=start_ts,

@@ -3766,7 +3766,8 @@ class RestAPI():
         try:
             report_data = self.rotkehlchen.data.cache.data.query(
                 filter_query=filter_query,
-                with_limit=self.rotkehlchen.premium is None)
+                with_limit=self.rotkehlchen.premium is None,
+            )
             status_code = HTTPStatus.OK
             message = ''
         except sqlcipher.IntegrityError as e:
@@ -3779,14 +3780,37 @@ class RestAPI():
         else:
             entries_result = []
 
-        if filter_query.report_id is None:
+        if filter_query.report_id is None and filter_query.event_type is None:
             entries_found = self.rotkehlchen.data.db.get_entries_count('pnl_events', 'conn_transient')  # noqa E501
-        else:
+        if filter_query.report_id is not None:
             report_id: int = int(filter_query.report_id)
+        if filter_query.event_type is not None:
+            event_type: str = filter_query.event_type
+
+        if event_type is str and report_id is str:
             entries_found = self.rotkehlchen.data.db.get_entries_count(
                 'pnl_events',
                 'conn_transient',
-                report_id=report_id)
+                report_id=report_id,
+                event_type=event_type,
+            )
+        elif report_id is int:
+            entries_found = self.rotkehlchen.data.db.get_entries_count(
+                'pnl_events',
+                'conn_transient',
+                report_id=report_id,
+            )
+        elif event_type is str:
+            entries_found = self.rotkehlchen.data.db.get_entries_count(
+                'pnl_events',
+                'conn_transient',
+                event_type=event_type,
+            )
+        else:
+            entries_found = self.rotkehlchen.data.db.get_entries_count(
+                'pnl_events',
+                'conn_transient',
+            )
 
         result = {
             'entries': entries_result,

@@ -14,7 +14,6 @@ from rotkehlchen.typing import Timestamp
 
 def accounting_history_process(
         accountant,
-        report_id,
         start_ts: Timestamp,
         end_ts: Timestamp,
         history_list: List[Dict],
@@ -24,6 +23,7 @@ def accounting_history_process(
         eth_transaction_list: List[Dict] = None,
         defi_events_list: List[DefiEvent] = None,
         ledger_actions_list: List[LedgerAction] = None,
+        report_id: int = None,
 ) -> Dict[str, Any]:
     trade_history: Sequence[Union[Trade, MarginPosition]]
     # For filtering the taxable actions list we start with 0 ts so that we have the
@@ -65,7 +65,6 @@ def accounting_history_process(
         ledger_actions = ledger_actions_list
 
     result = accountant.process_history(
-        report_id=report_id,
         start_ts=start_ts,
         end_ts=end_ts,
         trade_history=trade_history,
@@ -74,5 +73,6 @@ def accounting_history_process(
         eth_transactions=eth_transactions,
         defi_events=defi_events,
         ledger_actions=ledger_actions,
+        report_id=report_id,
     )
     return result

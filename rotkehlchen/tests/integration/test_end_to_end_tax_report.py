@@ -379,9 +379,6 @@ margin_history = [
 def test_end_to_end_tax_report(accountant):
     result = accounting_history_process(
         accountant=accountant,
-        report_id=0,
-        page=0,
-        rows=10,
         start_ts=0,
         end_ts=1514764799,  # 31/12/2017
         history_list=trades_history,
@@ -436,9 +433,6 @@ def test_end_to_end_tax_report(accountant):
 def test_end_to_end_tax_report_in_period(accountant):
     result = accounting_history_process(
         accountant=accountant,
-        report_id=0,
-        page=0,
-        rows=10,
         start_ts=1483228800,  # 01/01/2017
         end_ts=1514764799,  # 31/12/2017
         history_list=trades_history,
@@ -633,9 +627,6 @@ def test_asset_and_price_not_found_in_history_processing(accountant):
     }]
     result = accounting_history_process(
         accountant=accountant,
-        report_id=0,
-        page=0,
-        rows=10,
         start_ts=0,
         end_ts=1514764799,  # 31/12/2017
         history_list=bad_trades,

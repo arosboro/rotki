@@ -419,37 +419,7 @@ class CSVExporter():
         log.debug('csv event', **entry)
         self.all_events.append(entry)
         if not self.cached:
-            # TODO: NamedTuple AccountingEventCacheEntry with better primitive types
             cache_entry = AccountingEventCacheEntry(**entry)
-            # cache_json = entry.copy()
-            # cache_json['event_type'] = cache_json['type']
-            # del cache_json['type']
-            # cache_json['paid_in_profit_currency'] = str(cache_json['paid_in_profit_currency'])
-            # cache_json['paid_in_asset'] = str(cache_json['paid_in_asset'])
-            # cache_json['taxable_amount'] = str(cache_json['taxable_amount'])
-            # cache_json['taxable_bought_cost_in_profit_currency'] = str(
-            #     cache_json['taxable_bought_cost_in_profit_currency'])
-            # cache_json['taxable_received_in_profit_currency'] = str(
-            #     cache_json['taxable_received_in_profit_currency'])
-            # cache_json['received_in_asset'] = str(cache_json['received_in_asset'])
-            # cache_json['net_profit_or_loss'] = str(cache_json['net_profit_or_loss'])
-            # cache_json['time'] = int(cache_json['time'])
-            # cache_json['is_virtual'] = int(cache_json['is_virtual'])
-            #
-            # if cache_json['cost_basis'] is Dict[str, Any]:
-            #     cache_json['cost_basis']['is_complete'] = int(
-            #         cache_json['cost_basis']['is_complete'])
-            #     cache_json['cost_basis']['taxable_bought_cost'] = str(
-            #         cache_json['cost_basis']['taxable_bought_cost'])
-            #     cache_json['cost_basis']['taxfree_bought_cost'] = str(
-            #         cache_json['cost_basis']['taxfree_bought_cost'])
-            #     cache_json['cost_basis'] = str(cache_json['cost_basis'])
-            # if cache_json['cost_basis'] is None:
-            #     del cache_json['cost_basis']
-            # if cache_json['notes'] is None:
-            #     del cache_json['notes']
-            # if cache_json['link'] is None:
-            #     del cache_json['link']
 
             json_event_type = AccountingEventType.ACCOUNTING_EVENT
             cache_data: NamedJson = NamedJson(event_type=json_event_type, data=cache_entry.serialize())  # noqa E501

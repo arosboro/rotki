@@ -874,10 +874,8 @@ class Rotkehlchen():
 
         if self.user_is_logged_in:
             result['last_balance_save'] = self.data.db.get_last_balance_save_time()
-            result['eth_node_connection'] = self.chain_manager.ethereum.web3_mapping.get(
-                NodeName.OWN, None) is not None  # noqa : E501
-            result['last_data_upload_ts'] = Timestamp(
-                self.premium_sync_manager.last_data_upload_ts)  # noqa : E501
+            result['eth_node_connection'] = self.chain_manager.ethereum.web3_mapping.get(NodeName.OWN, None) is not None  # noqa : E501
+            result['last_data_upload_ts'] = Timestamp(self.premium_sync_manager.last_data_upload_ts)  # noqa : E501
         return result
 
     def shutdown(self) -> None:

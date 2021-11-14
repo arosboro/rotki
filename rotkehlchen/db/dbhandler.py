@@ -2366,7 +2366,7 @@ class DBHandler:
             ],
             conn_attribute: Literal['conn', 'conn_transient'] = 'conn',
             op: Literal['OR', 'AND'] = 'OR',
-            **kwargs: Dict[str, int],
+            **kwargs: Union[str, int],
     ) -> int:
         """Returns how many of a certain type of entry are saved in the DB
         Can accept int or string kwargs"""
@@ -2384,9 +2384,9 @@ class DBHandler:
             arg_strings: List[str] = []
             for arg, val in kwargs.items():
                 if isinstance(val, int):
-                    arg_strings.append(f' {arg} = {val}')
+                    arg_strings.append(f' {arg} = {val} ')
                 if isinstance(val, str):
-                    arg_strings.append(f' {arg} = "{val}"')
+                    arg_strings.append(f' {arg} = "{val}" ')
             op.join(arg_strings)
             cursorstr += op
         cursorstr += ';'

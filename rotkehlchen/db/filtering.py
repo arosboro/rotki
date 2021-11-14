@@ -2,7 +2,6 @@ import logging
 from dataclasses import dataclass
 from typing import Any, List, NamedTuple, Optional, Tuple, Union, cast
 
-from rotkehlchen.accounting.typing import AccountingEventType
 from rotkehlchen.errors import DeserializationError
 from rotkehlchen.logging import RotkehlchenLogsAdapter
 from rotkehlchen.typing import ChecksumEthAddress, Timestamp
@@ -135,22 +134,13 @@ class DBReportDataReportIDFilter(DBFilter):
 
 @dataclass(init=True, repr=True, eq=True, order=False, unsafe_hash=False, frozen=False)
 class DBReportDataEventTypeFilter(DBFilter):
-    event_type: Optional[Union[str, AccountingEventType]] = None
+    event_type: Optional[str] = None
 
     def prepare(self) -> Tuple[List[str], List[Any]]:
         if self.event_type is None:
             return [], []
 
-        if isinstance(self.event_type, str):
-            try:
-                value = AccountingEventType.deserialize_from_db(self.event_type)
-            except DeserializationError as e:
-                log.error(f'Failed to filter a DB transaction query by event_type: {str(e)}')
-                return [], []
-        else:
-            value = self.event_type
-
-        return ['event_type=?'], [str(value)]
+        return ['event_type=?'], [self.event_type]
 
 
 @dataclass(init=True, repr=True, eq=True, order=False, unsafe_hash=False, frozen=False)

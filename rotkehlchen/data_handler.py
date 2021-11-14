@@ -26,11 +26,12 @@ log = RotkehlchenLogsAdapter(logger)
 
 class DataHandler():
 
-    def __init__(self,
-                 data_directory: Path,
-                 msg_aggregator: MessagesAggregator,
-                 premium: Optional[Premium]):
-
+    def __init__(
+            self,
+            data_directory: Path,
+            msg_aggregator: MessagesAggregator,
+            premium: Optional[Premium],
+    ):
         self.logged_in = False
         self.data_directory = data_directory
         self.username = 'no_user'

@@ -280,7 +280,7 @@ class AccountingEventCacheEntry(NamedTuple):
         15 - notes
         """
         return cls(
-            type=EventType.deserialize_from_db(event_tuple[0]),
+            type=EventType(event_tuple[0]),
             location=Location.deserialize_from_db(event_tuple[1]),
             paid_in_profit_currency=deserialize_asset_amount(event_tuple[2]),
             paid_asset=Asset(event_tuple[3]),
