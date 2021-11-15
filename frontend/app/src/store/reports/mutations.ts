@@ -25,16 +25,19 @@ export const mutations: MutationTree<ReportState> = {
       eventsLimit,
       firstProcessedTimestamp
     } = payload;
-    state.data.overview = { ...overview };
-    state.data.allEvents = [...allEvents];
-    state.data.eventsProcessed = eventsProcessed;
-    state.data.eventsLimit = eventsLimit;
-    state.data.loaded = true;
-    state.data.firstProcessedTimestamp = firstProcessedTimestamp;
+    state.overview = { ...overview };
+    state.allEvents = [...allEvents];
+    state.eventsProcessed = eventsProcessed;
+    state.eventsLimit = eventsLimit;
+    state.loaded = true;
+    state.firstProcessedTimestamp = firstProcessedTimestamp;
   },
 
   [ReportMutations.SET_REPORTS](state: ReportState, payload: ReportsTableData) {
-    state.index = payload;
+    const { entries, entriesFound, entriesLimit } = payload;
+    state.entries = [...entries];
+    state.entriesFound = entriesFound;
+    state.entriesLimit = entriesLimit;
   },
 
   [ReportMutations.CURRENCY](state: ReportState, currency: string) {

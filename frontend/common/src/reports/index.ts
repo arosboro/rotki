@@ -77,18 +77,18 @@ export type TradeHistoryReport = z.infer<typeof TradeHistoryReport>
 
 export const PagedReport = PagedResourceParameters.extend(TradeHistoryReport.shape).transform(arg => {
   const pagedReport: {
-    identifier?: number;
-    name?: string;
-    timestamp?: number | null;
-    startTs?: number;
-    endTs?: number;
-    sizeOnDisk?: typeof NumericString | null;
-    eventsProcessed?: number;
-    eventsLimit?: number;
-    firstProcessedTimestamp?: number
+    identifier?: number,
+    name?: string,
+    timestamp?: number | null,
+    startTs?: number,
+    endTs?: number,
+    sizeOnDisk?: typeof NumericString | null,
+    eventsProcessed?: number,
+    eventsLimit?: number,
+    firstProcessedTimestamp?: number,
     overview: ProfitLossOverviewData,
     allEvents: ProfitLossEvent[],
-    loaded?: boolean,
+    loaded?: boolean
   } = {
     identifier: arg.identifier,
     name: arg.name,
@@ -134,21 +134,22 @@ export const ReportError = z.object({
 
 export type ReportError = z.infer<typeof ReportError>
 
-export const ReportsTableData = PagedResourceParameters.extend({
-    entries: z.array(Report),
-    entriesFound: z.number(),
-    entriesLimit: z.number(),
-    entriesTotal: z.union([z.number(), z.undefined()]),
-}).transform(arg => {
+export const ReportTable = z.object({
+  entries: z.array(Report),
+  entriesFound: z.number(),
+  entriesLimit: z.number(),
+})
+
+export type ReportTable = z.infer<typeof ReportTable>
+
+export const ReportsTableData = PagedResourceParameters.extend(ReportTable.shape).transform(arg => {
   const reports: {
-    entries?: Report[]
-    entriesFound?: number;
-    entriesTotal?: number;
-    entriesLimit?: number;
+    entries: Report[],
+    entriesFound: number,
+    entriesLimit: number
   } = {
     entries: arg.entries,
     entriesFound: arg.entries_found,
-    entriesTotal: arg.entries_total,
     entriesLimit: arg.entries_limit,
   };
   return reports;

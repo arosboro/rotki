@@ -8,7 +8,6 @@
         <data-table
           :headers="headers"
           :items="entries"
-          show-expand
           single-expand
           sort-by="timestamp"
           item-key="identifier"
@@ -70,25 +69,25 @@ export default defineComponent({
     const payload = ref<PagedResourceParameters>({
       limit: itemsPerPage,
       offset: 0,
-      orderByAttribute: 'created',
+      orderByAttribute: 'timestamp',
       ascending: false
     });
 
     const entries = computed(() => {
       const state: RotkehlchenState = store.state;
-      return state.reports!!.index.entries;
+      return state.reports!!.entries;
     });
     const limit = computed(() => {
       const state: RotkehlchenState = store.state;
-      return state.reports!!.index.entriesLimit;
+      return state.reports!!.entriesLimit;
     });
     const found = computed(() => {
       const state: RotkehlchenState = store.state;
-      return state.reports!!.index.entriesFound;
+      return state.reports!!.entriesFound;
     });
     const total = computed(() => {
       const state: RotkehlchenState = store.state;
-      return state.reports!!.index.entriesTotal;
+      return state.reports!!.entriesTotal;
     });
 
     const fetchReports = async (refresh: boolean = false) => {

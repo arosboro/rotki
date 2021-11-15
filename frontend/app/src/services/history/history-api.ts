@@ -36,7 +36,6 @@ import {
   validWithSessionStatus
 } from '@/services/utils';
 import { LedgerAction } from '@/store/history/types';
-import { ReportProgress } from '@/store/reports/types';
 
 export class HistoryApi {
   private readonly axios: AxiosInstance;

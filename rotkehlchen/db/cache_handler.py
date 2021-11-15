@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Dict, List, Any, Tuple
 from typing_extensions import Literal
 
 from rotkehlchen.accounting.accountant import FREE_PNL_EVENTS_LIMIT
-from rotkehlchen.accounting.typing import NamedJson, AccountingEventType
+from rotkehlchen.accounting.typing import NamedJson
 from rotkehlchen.db.filtering import ReportsFilterQuery, ReportDataFilterQuery
 from rotkehlchen.errors import DeserializationError
 from rotkehlchen.logging import RotkehlchenLogsAdapter
