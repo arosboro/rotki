@@ -563,38 +563,32 @@ class Rotkehlchen():
 
     def process_history(
             self,
-            report_id: Optional[int],
             start_ts: Timestamp,
             end_ts: Timestamp,
     ) -> Tuple[Dict[str, Any], str]:
-        if report_id is not None:
-            return self.data.cache.process_history(report_id, with_limit=self.premium is None)
-        else:
-            (
-                error_or_empty,
-                history,
-                loan_history,
-                asset_movements,
-                eth_transactions,
-                defi_events,
-                ledger_actions,
-            ) = self.events_historian.get_history(
-                report_id=report_id,
-                start_ts=start_ts,
-                end_ts=end_ts,
-                has_premium=self.premium is not None,
-            )
-            result = self.accountant.process_history(
-                report_id=report_id,
-                start_ts=start_ts,
-                end_ts=end_ts,
-                trade_history=history,
-                loan_history=loan_history,
-                asset_movements=asset_movements,
-                eth_transactions=eth_transactions,
-                defi_events=defi_events,
-                ledger_actions=ledger_actions,
-            )
+        (
+            error_or_empty,
+            history,
+            loan_history,
+            asset_movements,
+            eth_transactions,
+            defi_events,
+            ledger_actions,
+        ) = self.events_historian.get_history(
+            start_ts=start_ts,
+            end_ts=end_ts,
+            has_premium=self.premium is not None,
+        )
+        result = self.accountant.process_history(
+            start_ts=start_ts,
+            end_ts=end_ts,
+            trade_history=history,
+            loan_history=loan_history,
+            asset_movements=asset_movements,
+            eth_transactions=eth_transactions,
+            defi_events=defi_events,
+            ledger_actions=ledger_actions,
+        )
         return result, error_or_empty
 
     def query_balances(

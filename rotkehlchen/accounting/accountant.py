@@ -291,7 +291,6 @@ class Accountant():
 
     def process_history(
             self,
-            report_id: Optional[int],
             start_ts: Timestamp,
             end_ts: Timestamp,
             trade_history: List[Union[Trade, MarginPosition, AMMTrade]],
@@ -324,11 +323,7 @@ class Accountant():
         self.eth_transactions_gas_costs = FVal(0)
         self.asset_movement_fees = FVal(0)
         self.csvexporter.reset()
-        if report_id is None:
-            self.csvexporter.add_report(start_ts, end_ts)
-        else:
-            self.csvexporter.report_id = report_id
-            self.csvexporter.cached = True
+        self.csvexporter.add_report(start_ts, end_ts)
 
         # Ask the DB for the settings once at the start of processing so we got the
         # same settings through the entire task
@@ -473,7 +468,7 @@ class Accountant():
             'events_processed': count,
             'events_limit': events_limit,
             'all_events': self.csvexporter.all_events,
-        }  # TODO read this return statement from cache
+        }
 
     @staticmethod
     def _should_ignore_action(

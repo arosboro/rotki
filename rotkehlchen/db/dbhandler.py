@@ -2361,34 +2361,16 @@ class DBHandler:
                 'ethereum_transactions',
                 'amm_swaps',
                 'ledger_actions',
-                'pnl_reports',
-                'pnl_events',
             ],
-            conn_attribute: Literal['conn', 'conn_transient'] = 'conn',
             op: Literal['OR', 'AND'] = 'OR',
-            **kwargs: Union[str, int],
+            **kwargs: Any,
     ) -> int:
-        """Returns how many of a certain type of entry are saved in the DB
-        Can accept int or string kwargs"""
-        cursor = getattr(self, conn_attribute).cursor()
+        """Returns how many of a certain type of entry are saved in the DB"""
+        cursor = self.conn.cursor()
         cursorstr = f'SELECT COUNT(*) from {entries_table}'
         if len(kwargs) != 0:
             cursorstr += ' WHERE'
-            if len(kwargs.items()) == 1:
-                for arg, val in kwargs.items():
-                    if isinstance(val, int):
-                        cursorstr += f' {arg} = {val}'
-                    if isinstance(val, str):
-                        cursorstr += f' {arg} = "{val}"'
-        if len(kwargs.items()) > 1:
-            arg_strings: List[str] = []
-            for arg, val in kwargs.items():
-                if isinstance(val, int):
-                    arg_strings.append(f' {arg} = {val} ')
-                if isinstance(val, str):
-                    arg_strings.append(f' {arg} = "{val}" ')
-            op.join(arg_strings)
-            cursorstr += op
+        op.join([f' {arg} = "{val}" ' for arg, val in kwargs.items()])
         cursorstr += ';'
         query = cursor.execute(cursorstr)
         return query.fetchone()[0]

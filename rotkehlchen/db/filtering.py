@@ -2,6 +2,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any, List, NamedTuple, Optional, Tuple, Union, cast
 
+from rotkehlchen.accounting.typing import AccountingEventType
 from rotkehlchen.errors import DeserializationError
 from rotkehlchen.logging import RotkehlchenLogsAdapter
 from rotkehlchen.typing import ChecksumEthAddress, Timestamp
@@ -134,13 +135,22 @@ class DBReportDataReportIDFilter(DBFilter):
 
 @dataclass(init=True, repr=True, eq=True, order=False, unsafe_hash=False, frozen=False)
 class DBReportDataEventTypeFilter(DBFilter):
-    event_type: Optional[str] = None
+    event_type: Optional[Union[str, AccountingEventType]] = None
 
     def prepare(self) -> Tuple[List[str], List[Any]]:
         if self.event_type is None:
             return [], []
 
-        return ['event_type=?'], [self.event_type]
+        if isinstance(self.event_type, str):
+            try:
+                value = AccountingEventType.deserialize_from_db(self.event_type)
+            except DeserializationError as e:
+                log.error(f'Failed to filter a DB transaction query by event_type: {str(e)}')
+                return [], []
+        else:
+            value = self.event_type
+
+        return ['event_type=?'], [str(value)]
 
 
 @dataclass(init=True, repr=True, eq=True, order=False, unsafe_hash=False, frozen=False)
@@ -391,7 +401,7 @@ class ReportDataFilterQuery(DBFilterQuery):
         return report_id_filter.report_id
 
     @property
-    def event_type(self) -> Optional[str]:
+    def event_type(self) -> Optional[Union[str, AccountingEventType]]:
         event_type_filter = self.event_type_filter
         if event_type_filter is None:
             return None
@@ -421,7 +431,7 @@ class ReportDataFilterQuery(DBFilterQuery):
             order_ascending: bool = True,
             limit: Optional[int] = None,
             offset: Optional[int] = None,
-            report_id: Optional[Union[str, int]] = None,
+            report_id: Optional[int] = None,
             event_type: Optional[str] = None,
             from_ts: Optional[Timestamp] = None,
             to_ts: Optional[Timestamp] = None,
@@ -434,9 +444,9 @@ class ReportDataFilterQuery(DBFilterQuery):
             order_ascending=order_ascending,
         )
         filters: List[DBFilter] = []
-        if report_id:
+        if report_id is not None:
             filters.append(DBReportDataReportIDFilter(and_op=True, report_id=report_id))
-        if event_type:
+        if event_type is not None:
             filters.append(DBReportDataEventTypeFilter(and_op=True, event_type=event_type))
         filters.append(
             DBTimestampFilter(

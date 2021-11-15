@@ -524,7 +524,6 @@ class EventsHistorian():
 
     def get_history(
             self,
-            report_id: Optional[int],
             start_ts: Timestamp,
             end_ts: Timestamp,
             has_premium: bool,

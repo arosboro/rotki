@@ -505,7 +505,7 @@ class AccountingEventTypeField(fields.Field):
         # Make sure that given value is an AccountingEvent
         try:
             event_type = AccountingEventType.deserialize_from_db(value)
-        except (ValueError, TypeError) as e:
+        except DeserializationError as e:
             raise ValidationError(
                 f'Given value {value} is not an AccountingEventType',
                 field_name='event_type',
@@ -1400,7 +1400,6 @@ class StatisticsValueDistributionSchema(Schema):
 
 
 class HistoryProcessingSchema(Schema):
-    report_id = fields.Integer(load_default=None)
     from_timestamp = TimestampField(load_default=Timestamp(0))
     to_timestamp = TimestampField(load_default=ts_now)
     async_query = fields.Boolean(load_default=False)

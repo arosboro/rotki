@@ -943,13 +943,11 @@ class HistoryProcessingResource(BaseResource):
     @use_kwargs(get_schema, location='json_and_query')
     def get(
             self,
-            report_id: Optional[int],
             from_timestamp: Timestamp,
             to_timestamp: Timestamp,
             async_query: bool,
     ) -> Response:
         return self.rest_api.process_history(
-            report_id=report_id,
             from_timestamp=from_timestamp,
             to_timestamp=to_timestamp,
             async_query=async_query,

@@ -1,6 +1,8 @@
 import logging
+from copy import deepcopy
 
 from typing import TYPE_CHECKING, Dict, List, Any, Tuple
+from typing_extensions import Literal
 
 from rotkehlchen.accounting.accountant import FREE_PNL_EVENTS_LIMIT
 from rotkehlchen.accounting.typing import NamedJson, AccountingEventType
@@ -33,16 +35,17 @@ def deserialize_report_from_db(report: Any) -> Dict[str, Any]:
 
 
 def _return_reports_or_events_maybe_limit(
-        entry_type: str,
+        entry_type: Literal['events', 'reports'],
+        entries_found: int,
         entries: List[Dict[str, Any]],
         with_limit: bool,
-) -> List[Dict[str, Any]]:
+) -> Tuple[List[Dict[str, Any]], int]:
     if with_limit is False:
-        return entries
+        return entries, entries_found
 
     if entry_type == 'events':
         limit = FREE_PNL_EVENTS_LIMIT
-    else:
+    if entry_type == 'reports':
         limit = FREE_REPORTS_LOOKUP_LIMIT
 
     count: int = 0
@@ -51,7 +54,7 @@ def _return_reports_or_events_maybe_limit(
 
     returning_entries_length = min(limit, len(entries))
 
-    return entries[:returning_entries_length]
+    return entries[:returning_entries_length], entries_found
 
 
 class DBAccountingReports(LockableQueryMixIn):
@@ -66,7 +69,7 @@ class DBAccountingReports(LockableQueryMixIn):
             self,
             filter_query: ReportsFilterQuery,
             with_limit: bool = False,
-    ) -> List[Dict[str, Any]]:
+    ) -> Tuple[List[Dict[str, Any]], int]:
         """Queries for all reports/events of a Profit and Loss Report which has been performed
         historically. Returns a list of all transactions filtered and sorted according to the
         parameters.
@@ -79,11 +82,12 @@ class DBAccountingReports(LockableQueryMixIn):
         May raise:
         - TODO check what it may raise
         """
-        entries = self.get_reports(filter_=filter_query)
+        entries, total_filter_count = self.get_reports(filter_=filter_query)
 
         return _return_reports_or_events_maybe_limit(
             entry_type='reports',
             entries=entries,
+            entries_found=total_filter_count,
             with_limit=with_limit,
         )
 
@@ -100,7 +104,7 @@ class DBAccountingReports(LockableQueryMixIn):
         self.db.conn_transient.commit()
         return identifier
 
-    def get_reports(self, filter_: ReportsFilterQuery) -> List[Dict[str, Any]]:
+    def get_reports(self, filter_: ReportsFilterQuery) -> Tuple[List[Dict[str, Any]], int]:
         cursor = self.db.conn_transient.cursor()
         query, bindings = filter_.prepare()
         query = 'SELECT * FROM pnl_reports ' + query
@@ -108,7 +112,6 @@ class DBAccountingReports(LockableQueryMixIn):
 
         reports = []
         for result in results:
-            log.debug(f"get_reports result: {result}")
             try:
                 report = deserialize_report_from_db(result)
             except DeserializationError as e:
@@ -120,7 +123,17 @@ class DBAccountingReports(LockableQueryMixIn):
 
             reports.append(report)
 
-        return reports
+        if filter_.pagination is not None:
+            no_pagination_filter = deepcopy(filter_)
+            no_pagination_filter.pagination = None
+            query, bindings = no_pagination_filter.prepare()
+            query = 'SELECT COUNT(*) FROM pnl_reports ' + query
+            results = cursor.execute(query, bindings).fetchone()
+            total_filter_count = results[0]
+        else:
+            total_filter_count = len(reports)
+
+        return reports, total_filter_count
 
 
 class DBAccountingReportData(LockableQueryMixIn):
@@ -135,7 +148,7 @@ class DBAccountingReportData(LockableQueryMixIn):
             self,
             filter_query: ReportDataFilterQuery,
             with_limit: bool = False,
-    ) -> List[Dict[str, Any]]:
+    ) -> Tuple[List[Dict[str, Any]], int]:
         """Queries for all reports/events of a Profit and Loss Report which has been performed
         historically. Returns a list of all transactions filtered and sorted according to the
         parameters.
@@ -148,10 +161,11 @@ class DBAccountingReportData(LockableQueryMixIn):
         May raise:
         - TODO check what it may raise
         """
-        entries = self.get_data(filter_=filter_query)
+        entries, total_filter_count = self.get_data(filter_=filter_query)
 
         return _return_reports_or_events_maybe_limit(
             entry_type='events',
+            entries_found=total_filter_count,
             entries=entries,
             with_limit=with_limit,
         )
@@ -170,7 +184,7 @@ class DBAccountingReportData(LockableQueryMixIn):
         cursor.execute(query, (report_id, time) + event.to_db_tuple())
         self.db.conn_transient.commit()
 
-    def get_data(self, filter_: ReportDataFilterQuery) -> List[Dict[str, Any]]:
+    def get_data(self, filter_: ReportDataFilterQuery) -> Tuple[List[Dict[str, Any]], int]:
         cursor = self.db.conn_transient.cursor()
         query, bindings = filter_.prepare()
         query = 'SELECT event_type, data FROM pnl_events ' + query
@@ -178,7 +192,6 @@ class DBAccountingReportData(LockableQueryMixIn):
 
         records = []
         for result in results:
-            log.debug(f"get_events result: {result}")
             try:
                 record = NamedJson.deserialize_from_db(result).data
             except DeserializationError as e:
@@ -190,7 +203,17 @@ class DBAccountingReportData(LockableQueryMixIn):
 
             records.append(record)
 
-        return records
+        if filter_.pagination is not None:
+            no_pagination_filter = deepcopy(filter_)
+            no_pagination_filter.pagination = None
+            query, bindings = no_pagination_filter.prepare()
+            query = 'SELECT COUNT(*) FROM pnl_events ' + query
+            results = cursor.execute(query, bindings).fetchone()
+            total_filter_count = results[0]
+        else:
+            total_filter_count = len(records)
+
+        return records, total_filter_count
 
 
 class CacheHandler(LockableQueryMixIn):
@@ -219,21 +242,3 @@ class CacheHandler(LockableQueryMixIn):
     @data.setter
     def data(self, value: DBAccountingReportData) -> None:
         self.cache_data = value
-
-    def process_history(self, report_id: int, with_limit: bool) -> Tuple[Dict[str, Any], str]:
-        overview_event_type = str(AccountingEventType.ACCOUNTING_OVERVIEW)
-        events_event_type = str(AccountingEventType.ACCOUNTING_OVERVIEW)
-        filter_ = ReportDataFilterQuery.make(report_id=report_id, event_type=overview_event_type)
-        overview = self.cache_data.get_data(filter_=filter_)
-        filter_ = ReportDataFilterQuery.make(report_id=report_id, event_type=events_event_type)
-        events = self.cache_data.get_data(filter_=filter_)
-        first_processed_timestamp = events[0].get('time') if len(events) >= 1 else 0
-        events_limit = FREE_PNL_EVENTS_LIMIT if with_limit else -1
-        result: Dict[str, Any] = {
-            'overview': overview,
-            'first_processed_timestamp': first_processed_timestamp,
-            'events_processed': len(events),
-            'events_limit': events_limit,
-            'all_events': _return_reports_or_events_maybe_limit('events', events, with_limit),
-        }
-        return result, ''

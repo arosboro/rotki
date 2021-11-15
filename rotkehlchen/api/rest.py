@@ -1604,12 +1604,10 @@ class RestAPI():
 
     def _process_history(
             self,
-            report_id: Optional[int],
             from_timestamp: Timestamp,
             to_timestamp: Timestamp,
     ) -> Dict[str, Any]:
         result, error_or_empty = self.rotkehlchen.process_history(
-            report_id=report_id,
             start_ts=from_timestamp,
             end_ts=to_timestamp,
         )
@@ -1618,7 +1616,6 @@ class RestAPI():
     @require_loggedin_user()
     def process_history(
             self,
-            report_id: Optional[int],
             from_timestamp: Timestamp,
             to_timestamp: Timestamp,
             async_query: bool,
@@ -1626,13 +1623,11 @@ class RestAPI():
         if async_query:
             return self._query_async(
                 command='_process_history',
-                report_id=report_id,
                 from_timestamp=from_timestamp,
                 to_timestamp=to_timestamp,
             )
 
         response = self._process_history(
-            report_id=report_id,
             from_timestamp=from_timestamp,
             to_timestamp=to_timestamp,
         )
@@ -3708,7 +3703,7 @@ class RestAPI():
         reports: Optional[List[Dict[str, Any]]]
         # TODO: Make an exception to raise here coming from DBTaxableEvents
         # try:
-        reports = self.rotkehlchen.data.cache.reports.query(
+        reports, entries_found = self.rotkehlchen.data.cache.reports.query(
             filter_query=filter_query,
             with_limit=self.rotkehlchen.premium is None,
         )
@@ -3726,7 +3721,7 @@ class RestAPI():
 
         result = {
             'entries': entries_result,
-            'entries_found': self.rotkehlchen.data.db.get_entries_count('pnl_reports', 'conn_transient'),  # noqa E501
+            'entries_found': entries_found,
             'entries_limit': FREE_REPORTS_LOOKUP_LIMIT if self.rotkehlchen.premium is None else -1,
         }
 
@@ -3764,7 +3759,7 @@ class RestAPI():
     ) -> Dict[str, Any]:
         report_data: Optional[List[Dict[str, Any]]]
         try:
-            report_data = self.rotkehlchen.data.cache.data.query(
+            report_data, entries_found = self.rotkehlchen.data.cache.data.query(
                 filter_query=filter_query,
                 with_limit=self.rotkehlchen.premium is None,
             )
@@ -3772,6 +3767,7 @@ class RestAPI():
             message = ''
         except sqlcipher.IntegrityError as e:
             report_data = None
+            entries_found = None
             status_code = HTTPStatus.BAD_GATEWAY
             message = str(e)
 
@@ -3779,38 +3775,6 @@ class RestAPI():
             entries_result = report_data
         else:
             entries_result = []
-
-        if filter_query.report_id is None and filter_query.event_type is None:
-            entries_found = self.rotkehlchen.data.db.get_entries_count('pnl_events', 'conn_transient')  # noqa E501
-        if filter_query.report_id is not None:
-            report_id: int = int(filter_query.report_id)
-        if filter_query.event_type is not None:
-            event_type: str = filter_query.event_type
-
-        if event_type is str and report_id is str:
-            entries_found = self.rotkehlchen.data.db.get_entries_count(
-                'pnl_events',
-                'conn_transient',
-                report_id=report_id,
-                event_type=event_type,
-            )
-        elif report_id is int:
-            entries_found = self.rotkehlchen.data.db.get_entries_count(
-                'pnl_events',
-                'conn_transient',
-                report_id=report_id,
-            )
-        elif event_type is str:
-            entries_found = self.rotkehlchen.data.db.get_entries_count(
-                'pnl_events',
-                'conn_transient',
-                event_type=event_type,
-            )
-        else:
-            entries_found = self.rotkehlchen.data.db.get_entries_count(
-                'pnl_events',
-                'conn_transient',
-            )
 
         result = {
             'entries': entries_result,
@@ -3836,7 +3800,6 @@ class RestAPI():
             filter_query=filter_query,
         )
         result = response['result']
-        log.debug(result)
         msg = response['message']
         status_code = _get_status_code_from_async_response(response)
 

@@ -180,7 +180,6 @@ prices = {
 
 
 def check_result_of_history_creation_for_remote_errors(
-        report_id: Optional[int],  # pylint: disable=unused-argument
         start_ts: Timestamp,  # pylint: disable=unused-argument
         end_ts: Timestamp,  # pylint: disable=unused-argument
         trade_history: List[Union[Trade, MarginPosition, AMMTrade]],
@@ -686,7 +685,6 @@ def mock_history_processing(
         rotki: Rotkehlchen,
         should_mock_history_processing: bool = True,
         remote_errors: bool = False,
-        history_report_id: Optional[int] = None,
         history_start_ts: Optional[Timestamp] = None,
         history_end_ts: Optional[Timestamp] = None,
 ):
@@ -698,7 +696,6 @@ def mock_history_processing(
     original_history_processing_function = rotki.accountant.process_history
 
     def check_result_of_history_creation(
-            report_id: Optional[int],
             start_ts: Timestamp,
             end_ts: Timestamp,
             trade_history: List[Union[Trade, MarginPosition, AMMTrade]],
@@ -711,10 +708,6 @@ def mock_history_processing(
         """This function offers some simple assertions on the result of the
         created history. The entire processing part of the history is mocked
         away by this checking function"""
-        if history_report_id is None:
-            assert report_id == 0, 'if no report_id is given it should be zero'
-        else:
-            assert report_id == history_report_id, 'should be same as given to process_history'
         if history_start_ts is None:
             assert start_ts == 0, 'if no start_ts is given it should be zero'
         else:
@@ -857,7 +850,6 @@ def mock_history_processing(
         return {}
 
     def check_result_of_history_creation_and_process_it(
-            report_id: Optional[int],
             start_ts: Timestamp,
             end_ts: Timestamp,
             trade_history: List[Union[Trade, MarginPosition, AMMTrade]],
@@ -869,7 +861,6 @@ def mock_history_processing(
     ) -> Dict[str, Any]:
         """Checks results of history creation but also proceeds to normal history processing"""
         check_result_of_history_creation(
-            report_id=report_id,
             start_ts=start_ts,
             end_ts=end_ts,
             trade_history=trade_history,
@@ -880,7 +871,6 @@ def mock_history_processing(
             ledger_actions=ledger_actions,
         )
         return original_history_processing_function(
-            report_id=report_id,
             start_ts=start_ts,
             end_ts=end_ts,
             trade_history=trade_history,

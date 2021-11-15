@@ -73,6 +73,5 @@ def accounting_history_process(
         eth_transactions=eth_transactions,
         defi_events=defi_events,
         ledger_actions=ledger_actions,
-        report_id=report_id,
     )
     return result
