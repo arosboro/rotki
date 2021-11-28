@@ -1,5 +1,6 @@
 import logging
 from copy import deepcopy
+from dataclasses import dataclass
 
 from typing import TYPE_CHECKING, Dict, List, Any, Tuple
 from typing_extensions import Literal
@@ -216,29 +217,19 @@ class DBAccountingReportData(LockableQueryMixIn):
         return records, total_filter_count
 
 
-class CacheHandler(LockableQueryMixIn):
-    cache_reports: DBAccountingReports
-    cache_data: DBAccountingReportData
+@dataclass()
+class CacheHandler:
+    reports: DBAccountingReports
+    data: DBAccountingReportData
 
     def __init__(self, database: 'DBHandler', msg_aggregator: MessagesAggregator):
-        super().__init__()
         self.db = database
         self.msg_aggregator = msg_aggregator
-        self.cache_reports = DBAccountingReports(self.db, self.msg_aggregator)
-        self.cache_data = DBAccountingReportData(self.db, self.msg_aggregator)
+        self.reports = DBAccountingReports(self.db, self.msg_aggregator)
+        self.data = DBAccountingReportData(self.db, self.msg_aggregator)
 
-    @property
-    def reports(self) -> DBAccountingReports:
-        return self.cache_reports
+    def add_report(self, start_ts: Timestamp, end_ts: Timestamp) -> int:
+        return self.reports.add_report(start_ts, end_ts)
 
-    @reports.setter
-    def reports(self, value: DBAccountingReports) -> None:
-        self.cache_reports = value
-
-    @property
-    def data(self) -> DBAccountingReportData:
-        return self.cache_data
-
-    @data.setter
-    def data(self, value: DBAccountingReportData) -> None:
-        self.cache_data = value
+    def add_data(self, report_id: int, timestamp: Timestamp, cache_data: NamedJson) -> None:
+        return self.data.add_data(report_id, timestamp, cache_data)

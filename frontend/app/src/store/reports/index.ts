@@ -3,8 +3,7 @@ import { RotkehlchenState } from '@/store/types';
 import { actions } from './actions';
 import { getters } from './getters';
 import { mutations } from './mutations';
-import { state } from './state';
-import { ReportState } from './types';
+import { state, ReportState } from './state';
 
 const namespaced: boolean = true;
 

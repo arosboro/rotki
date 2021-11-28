@@ -127,7 +127,7 @@ class Rotkehlchen():
         self.exchange_manager = ExchangeManager(msg_aggregator=self.msg_aggregator)
         # Initialize the GlobalDBHandler singleton. Has to be initialized BEFORE asset resolver
         GlobalDBHandler(data_dir=self.data_dir)
-        self.data = DataHandler(self.data_dir, self.msg_aggregator, self.premium)
+        self.data = DataHandler(self.data_dir, self.msg_aggregator)
         self.cryptocompare = Cryptocompare(data_directory=self.data_dir, database=None)
         self.coingecko = Coingecko()
         self.icon_manager = IconManager(data_dir=self.data_dir, coingecko=self.coingecko)

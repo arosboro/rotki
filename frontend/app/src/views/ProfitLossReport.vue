@@ -100,6 +100,7 @@ import AccountingSettingsDisplay from '@/components/profitloss/AccountingSetting
 import Generate from '@/components/profitloss/Generate.vue';
 import ProfitLossEvents from '@/components/profitloss/ProfitLossEvents.vue';
 import ProfitLossOverview from '@/components/profitloss/ProfitLossOverview.vue';
+import ReportsTable from '@/components/profitloss/ReportsTable.vue';
 import { ReportError, ReportPeriod } from '@/store/reports/types';
 import { Message } from '@/store/types';
 import { Currency } from '@/types/currency';
@@ -113,6 +114,7 @@ import { AccountingSettings } from '@/types/user';
     ErrorScreen,
     ProfitLossOverview,
     ProfitLossEvents,
+    ReportsTable,
     AccountingSettingsDisplay,
     ProgressScreen,
     Generate

@@ -14,7 +14,6 @@ import { basicAxiosTransformer } from '@/services/consts';
 import { DefiApi } from '@/services/defi/defi-api';
 import { IgnoredActions } from '@/services/history/const';
 import { HistoryApi } from '@/services/history/history-api';
-import { ReportsApi } from '@/services/reports/reports-api';
 import { SessionApi } from '@/services/session/session-api';
 import {
   AsyncQuery,
@@ -99,7 +98,6 @@ export class RotkehlchenApi {
     session: new SessionApi(axios),
     balances: new BalancesApi(axios),
     history: new HistoryApi(axios),
-    reports: new ReportsApi(axios),
     assets: new AssetApi(axios),
     backups: new BackupApi(axios)
   });
@@ -116,7 +114,6 @@ export class RotkehlchenApi {
       session: this._session,
       balances: this._balances,
       history: this._history,
-      reports: this._reports,
       assets: this._assets,
       backups: this._backups
     } = this.setupApis(this.axios));
@@ -406,15 +403,11 @@ export class RotkehlchenApi {
       .then(handleResponse);
   }
 
-  processTradeHistoryAsync(
-    start: number,
-    end: number
-  ): Promise<PendingTask> {
+  processTradeHistoryAsync(start: number, end: number): Promise<PendingTask> {
     return this.axios
       .get<ActionResult<PendingTask>>('/history/', {
         params: {
           async_query: true,
-          report_id: undefined,
           from_timestamp: start,
           to_timestamp: end
         },
@@ -694,14 +687,6 @@ export class RotkehlchenApi {
     }
 
     return request.then(handleResponse);
-  }
-
-  listReports(): Promise<boolean> {
-    return this.axios
-      .get<ActionResult<boolean>>('/reports/', {
-        validateStatus: validStatus
-      })
-      .then(handleResponse);
   }
 
   exportHistoryCSV(directory: string): Promise<boolean> {

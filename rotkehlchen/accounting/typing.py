@@ -8,7 +8,7 @@ from rotkehlchen.assets.asset import Asset
 from rotkehlchen.errors import DeserializationError, EncodingError
 from rotkehlchen.fval import FVal
 from rotkehlchen.serialization.deserialize import deserialize_asset_amount, deserialize_timestamp
-from rotkehlchen.typing import EventType, Location, EmptyStr, Timestamp
+from rotkehlchen.typing import EventType, Location, Timestamp
 
 
 class AccountingEventType(Enum):
@@ -239,11 +239,11 @@ class AccountingEventCacheEntry(NamedTuple):
     type: EventType
     location: Location
     paid_in_profit_currency: FVal
-    paid_asset: Union[Asset, EmptyStr]
+    paid_asset: Union[Asset, ]
     paid_in_asset: FVal
     taxable_amount: FVal
     taxable_bought_cost_in_profit_currency: FVal
-    received_asset: Union[Asset, EmptyStr]
+    received_asset: Union[Asset, ]
     taxable_received_in_profit_currency: FVal
     received_in_asset: FVal
     net_profit_or_loss: FVal

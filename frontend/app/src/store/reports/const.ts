@@ -2,27 +2,11 @@ import {
   ProfitLossOverviewData,
   ReportError,
   ReportPeriod
-} from '@rotki/common/lib/reports';
+} from '@/store/reports/types';
 import { Zero } from '@/utils/bignumbers';
 
-export enum ReportActions {
-  FETCH_REPORTS = 'fetchReports',
-  FETCH_REPORT = 'fetchReport',
-  EDIT_REPORT = 'editReport'
-}
-
-export enum ReportMutations {
-  SET_REPORT = 'set',
-  SET_REPORTS = 'setReports',
-  ADD_REPORT = 'addReport',
-  CURRENCY = 'currency',
-  REPORT_PERIOD = 'reportPeriod',
-  ACCOUNTING_SETTINGS = 'accountingSettings',
-  RESET = 'reset'
-}
-
-export const MUTATION_PROGRESS = 'progress';
-export const MUTATION_REPORT_ERROR = 'reportError';
+export const MUTATION_PROGRESS = 'progress' as const;
+export const MUTATION_REPORT_ERROR = 'reportError' as const;
 
 export const emptyPeriod: () => ReportPeriod = () => ({
   start: 0,

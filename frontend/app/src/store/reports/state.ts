@@ -1,3 +1,4 @@
+import { NumericString } from '@rotki/common';
 import { currencies } from '@/data/currencies';
 import {
   emptyError,
@@ -15,6 +16,12 @@ import {
 import { AccountingSettings } from '@/types/user';
 
 export interface ReportState {
+  identifier: number;
+  name: string;
+  created: number;
+  startTs: number;
+  endTs: number;
+  sizeOnDisk: typeof NumericString;
   firstProcessedTimestamp: number;
   processed: number;
   limit: number;
@@ -24,17 +31,17 @@ export interface ReportState {
   reportPeriod: ReportPeriod;
   currency: string;
   loaded: boolean;
-  identifier: number;
-  name: string;
-  created: number;
-  startTs: number;
-  endTs: number;
-  sizeOnDisk: NumericString;
   progress: ReportProgress;
   reportError: ReportError;
 }
 
 export const defaultState = (): ReportState => ({
+  identifier: -1,
+  name: '',
+  created: -1,
+  startTs: -1,
+  endTs: -1,
+  sizeOnDisk: NumericString,
   overview: tradeHistoryPlaceholder(),
   events: [],
   processed: -1,
@@ -44,11 +51,6 @@ export const defaultState = (): ReportState => ({
   reportPeriod: emptyPeriod(),
   currency: currencies[0].tickerSymbol,
   loaded: false,
-  identifier: -1,
-  created: -1,
-  startTs: -1,
-  endTs: -1,
-  sizeOnDisk: -1,
   progress: {
     processingState: '',
     totalProgress: ''

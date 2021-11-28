@@ -1869,16 +1869,6 @@
         "task": {
           "title": "Create tax report"
         }
-      },
-      "fetch": {
-        "error": {
-          "title": "An error has occurred retrieving the processed report(s).",
-          "description": "An unexpected response was received while fetching report history. This might indicate an issue with the reporting mechanism. Please check the logs for any error messages (you might have to enable debug logging first) and create an issue."
-        },
-        "task": {
-          "title": "Retrieving saved historical report data",
-          "description": "Locally cached reports are being loaded."
-        }
       }
     },
     "statistics": {

@@ -3703,7 +3703,7 @@ class RestAPI():
         reports: Optional[List[Dict[str, Any]]]
         # TODO: Make an exception to raise here coming from DBTaxableEvents
         # try:
-        reports, entries_found = self.rotkehlchen.data.cache.reports.query(
+        reports, entries_found = self.rotkehlchen.data.transient.reports.query(
             filter_query=filter_query,
             with_limit=self.rotkehlchen.premium is None,
         )
@@ -3759,7 +3759,7 @@ class RestAPI():
     ) -> Dict[str, Any]:
         report_data: Optional[List[Dict[str, Any]]]
         try:
-            report_data, entries_found = self.rotkehlchen.data.cache.data.query(
+            report_data, entries_found = self.rotkehlchen.data.transient.data.query(
                 filter_query=filter_query,
                 with_limit=self.rotkehlchen.premium is None,
             )

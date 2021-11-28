@@ -102,7 +102,7 @@ class CSVExporter():
     ):
         self.user_directory = user_directory
         self.database = database
-        self.cache = cache
+        self.transient = cache
         self.create_csv = create_csv
         self.all_events: List[Dict[str, Any]] = []
         self.report_id: int = 0
@@ -148,7 +148,7 @@ class CSVExporter():
         self.cached = False
 
     def add_report(self, start_ts: Timestamp, end_ts: Timestamp) -> int:
-        self.report_id = self.cache.reports.add_report(start_ts, end_ts)
+        self.report_id = self.transient.add_report(start_ts, end_ts)
         return self.report_id
 
     def timestamp_to_date(self, timestamp: Timestamp) -> str:
@@ -423,7 +423,7 @@ class CSVExporter():
 
             json_event_type = AccountingEventType.ACCOUNTING_EVENT
             cache_data: NamedJson = NamedJson(event_type=json_event_type, data=cache_entry.serialize())  # noqa E501
-            self.cache.data.add_data(self.report_id, timestamp, cache_data)
+            self.transient.add_data(self.report_id, timestamp, cache_data)
         new_entry = entry.copy()
         # deleting and read link and notes for them to be at the end
         del new_entry['link']

@@ -118,7 +118,7 @@
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator';
-import { mapGetters } from 'vuex';
+import { mapGetters, mapState } from 'vuex';
 import AmountDisplay from '@/components/display/AmountDisplay.vue';
 import { ExchangeRateGetter } from '@/store/balances/types';
 import { ProfitLossOverviewData } from '@/store/reports/types';
@@ -129,7 +129,7 @@ import { Currency } from '@/types/currency';
     AmountDisplay
   },
   computed: {
-    ...mapGetters('reports', ['overview']),
+    ...mapState('reports', ['overview']),
     ...mapGetters('session', ['currency']),
     ...mapGetters('balances', ['exchangeRate'])
   }

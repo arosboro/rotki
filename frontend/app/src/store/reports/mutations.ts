@@ -1,57 +1,39 @@
-import {
-  PagedReport,
-  ReportError,
-  ReportPeriod,
-  ReportProgress,
-  ReportsTableData
-} from '@rotki/common/lib/reports';
 import { MutationTree } from 'vuex';
 import {
   MUTATION_PROGRESS,
-  MUTATION_REPORT_ERROR,
-  ReportMutations
+  MUTATION_REPORT_ERROR
 } from '@/store/reports/const';
-import { defaultState } from '@/store/reports/state';
+import { defaultState, ReportState } from '@/store/reports/state';
+import {
+  ReportData,
+  ReportError,
+  ReportPeriod,
+  ReportProgress
+} from '@/store/reports/types';
 
-import { ReportState } from '@/store/reports/types';
 import { AccountingSettings } from '@/types/user';
 
 export const mutations: MutationTree<ReportState> = {
-  [ReportMutations.SET_REPORT](state: ReportState, payload: PagedReport) {
-    const {
-      overview,
-      allEvents,
-      eventsProcessed,
-      eventsLimit,
-      firstProcessedTimestamp
-    } = payload;
+  set(state: ReportState, payload: ReportData) {
+    const { overview, events, processed, limit, firstProcessedTimestamp } =
+      payload;
     state.overview = { ...overview };
-    state.allEvents = [...allEvents];
-    state.eventsProcessed = eventsProcessed;
-    state.eventsLimit = eventsLimit;
+    state.events = [...events];
+    state.processed = processed;
+    state.limit = limit;
     state.loaded = true;
     state.firstProcessedTimestamp = firstProcessedTimestamp;
   },
 
-  [ReportMutations.SET_REPORTS](state: ReportState, payload: ReportsTableData) {
-    const { entries, entriesFound, entriesLimit } = payload;
-    state.entries = [...entries];
-    state.entriesFound = entriesFound;
-    state.entriesLimit = entriesLimit;
-  },
-
-  [ReportMutations.CURRENCY](state: ReportState, currency: string) {
+  currency(state: ReportState, currency: string) {
     state.currency = currency;
   },
 
-  [ReportMutations.REPORT_PERIOD](state: ReportState, payload: ReportPeriod) {
+  reportPeriod(state: ReportState, payload: ReportPeriod) {
     state.reportPeriod = payload;
   },
 
-  [ReportMutations.ACCOUNTING_SETTINGS](
-    state: ReportState,
-    payload: AccountingSettings
-  ) {
+  accountingSettings(state: ReportState, payload: AccountingSettings) {
     state.accountingSettings = payload;
   },
 
